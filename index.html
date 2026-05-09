@@ -714,6 +714,16 @@
   gap: 6px;
   margin-bottom: 14px;
 }
+.settlement-branch-title {
+  grid-column: 1 / -1;
+  font-family: var(--font-pixel);
+  font-size: 0.65em;
+  color: var(--accent);
+  padding: 8px 0 2px;
+  margin-top: 4px;
+  border-top: 2px solid var(--border);
+}
+.settlement-branch-title:first-child { border-top: none; margin-top: 0; }
 .xp-row {
   font-family: var(--font-ui);
   font-size: 0.7em;
@@ -1080,6 +1090,11 @@
   <!-- STATS PAGE -->
   <div class="page active" id="page-stats">
     <h2>📊 练琴统计</h2>
+    <div class="char-tabs" id="branchTabs" style="margin-bottom:16px;">
+      <button class="char-tab active" data-branch="jazz">🎺 爵士贝斯手</button>
+      <button class="char-tab" data-branch="pop">🎸 流行贝斯手</button>
+      <button class="char-tab" data-branch="neon">🎹 霓虹贝斯手</button>
+    </div>
     <div class="rpg-panel" id="rpgPanel">
       <h3 style="margin-top:0;">🎮 贝斯手属性面板</h3>
       <div class="rpg-bars" id="rpgBars"></div>
@@ -1138,6 +1153,11 @@
   <!-- PLAN PAGE -->
   <div class="page" id="page-plan">
     <h2>📖 练琴计划</h2>
+    <div class="char-tabs" id="planBranchTabs" style="margin-bottom:16px;">
+      <button class="char-tab active" data-branch="jazz">🎺 爵士</button>
+      <button class="char-tab" data-branch="pop">🎸 流行</button>
+      <button class="char-tab" data-branch="neon">🎹 霓虹</button>
+    </div>
     <div id="planSections"></div>
   </div>
 
@@ -1366,7 +1386,9 @@ function setCheckin(dateStr, checkin) {
 // ============================================================
 // RPG DATA LAYER
 // ============================================================
-const STORAGE_RPG = 'bass_rpg_state';
+const STORAGE_RPG = 'bass_rpg_state'; // legacy key — kept for migration backup
+const STORAGE_RPG_PREFIX = 'bass_rpg_state_';
+const STORAGE_RPG_META = 'bass_rpg_meta';
 const DIM_KEYS = ['tech','rhythm','ear','harmony','improv','repertoire'];
 const DIM_LABELS = {
   tech:'技术基本功', rhythm:'节奏/时值感', ear:'听力',
@@ -1374,22 +1396,54 @@ const DIM_LABELS = {
 };
 const DIM_EMOJI = { tech:'🔧', rhythm:'⏱️', ear:'👂', harmony:'📚', improv:'🎵', repertoire:'🎤' };
 
-const LEVEL_THRESHOLDS = [0,300,700,1300,2100,3100,4600,6300,8300,99999];
+const BRANCH_KEYS = ['jazz','pop','neon'];
+const BRANCH_LABELS = { jazz:'爵士贝斯手', pop:'流行贝斯手', neon:'霓虹贝斯手' };
+const BRANCH_EMOJI = { jazz:'🎺', pop:'🎸', neon:'🎹' };
+
+// Difficulty curve: Pop(fastest) < Jazz(medium) < Neon(slowest)
+const BRANCH_LEVEL_THRESHOLDS = {
+  pop:  [0,200,500,1000,1700,2600,3800,5300,7200,99999],
+  jazz: [0,300,700,1300,2100,3100,4600,6300,8300,99999],
+  neon: [0,400,950,1800,2900,4300,6200,8700,11500,99999]
+};
 const LEVEL_NAMES = [
   '初级I','初级II','初级III',
   '中级I','中级II','中级III',
   '高级I','高级II','高级III'
 ];
 
-const TAG_WEIGHTS = {
-  arpeggio:    { tech:6, harmony:2 },
-  walking:     { tech:2, rhythm:3, improv:2, repertoire:1 },
-  ear:         { ear:6, repertoire:2 },
-  metronome:   { rhythm:6 },
-  improv:      { improv:5, tech:2 },
-  theory:      { harmony:6 },
-  song:        { repertoire:4, rhythm:2, improv:1 },
-  technique:   { tech:5 }
+const BRANCH_TAG_WEIGHTS = {
+  jazz: {
+    arpeggio:    { tech:6, harmony:2 },
+    walking:     { tech:2, rhythm:3, improv:2, repertoire:1 },
+    ear:         { ear:6, repertoire:2 },
+    metronome:   { rhythm:6 },
+    improv:      { improv:5, tech:2 },
+    theory:      { harmony:6 },
+    song:        { repertoire:4, rhythm:2, improv:1 },
+    technique:   { tech:5 }
+  },
+  pop: {
+    // Easiest branch — generous XP, focus on tech/harmony/repertoire
+    arpeggio:    { tech:5, harmony:2 },
+    walking:     { rhythm:3, repertoire:3, tech:1 },
+    ear:         { ear:4, repertoire:2 },
+    metronome:   { rhythm:5 },
+    improv:      { tech:2, improv:2 },
+    theory:      { harmony:5 },
+    song:        { repertoire:5, rhythm:2, tech:1 },
+    technique:   { tech:5 }
+  },
+  neon: {
+    arpeggio:    { tech:5, rhythm:2 },
+    walking:     { rhythm:4, tech:2 },
+    ear:         { ear:3, repertoire:2 },
+    metronome:   { rhythm:6, tech:1 },
+    improv:      { tech:3, improv:3 },
+    theory:      { harmony:3 },
+    song:        { repertoire:4, rhythm:2 },
+    technique:   { tech:6 }
+  }
 };
 
 const TAG_OPTIONS = [
@@ -1411,9 +1465,12 @@ function defaultRpgState() {
   };
 }
 
-function loadRpgState() {
+// --- Per-branch storage ---
+function storageKey(branch) { return STORAGE_RPG_PREFIX + branch; }
+
+function loadBranchState(branch) {
   try {
-    const raw = localStorage.getItem(STORAGE_RPG);
+    const raw = localStorage.getItem(storageKey(branch));
     if (!raw) return defaultRpgState();
     const saved = JSON.parse(raw);
     const def = defaultRpgState();
@@ -1425,30 +1482,50 @@ function loadRpgState() {
   } catch { return defaultRpgState(); }
 }
 
-function saveRpgState(state) {
-  localStorage.setItem(STORAGE_RPG, JSON.stringify(state));
+function saveBranchState(branch, state) {
+  localStorage.setItem(storageKey(branch), JSON.stringify(state));
 }
 
-function getLevel(xp) {
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (xp >= LEVEL_THRESHOLDS[i]) return i;
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(STORAGE_RPG_META);
+    if (!raw) return { version: 2, activeBranch: 'jazz' };
+    return JSON.parse(raw);
+  } catch { return { version: 2, activeBranch: 'jazz' }; }
+}
+
+function saveMeta(meta) {
+  localStorage.setItem(STORAGE_RPG_META, JSON.stringify(meta));
+}
+
+// Legacy wrappers (for migration / backward compat)
+function loadRpgState() { return loadBranchState('jazz'); }
+function saveRpgState(state) { saveBranchState('jazz', state); }
+
+// --- Branch-aware helpers ---
+function getLevel(xp, branch) {
+  const thresholds = BRANCH_LEVEL_THRESHOLDS[branch || 'jazz'];
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) return i;
   }
   return 0;
 }
 
-function getLevelName(xp) {
-  return LEVEL_NAMES[getLevel(xp)];
+function getLevelName(xp, branch) {
+  return LEVEL_NAMES[getLevel(xp, branch)];
 }
 
-function getXpToNext(xp) {
-  const level = getLevel(xp);
+function getXpToNext(xp, branch) {
+  const thresholds = BRANCH_LEVEL_THRESHOLDS[branch || 'jazz'];
+  const level = getLevel(xp, branch);
   const nextIdx = level + 1;
-  if (nextIdx >= LEVEL_THRESHOLDS.length) return Infinity;
-  return LEVEL_THRESHOLDS[nextIdx] - xp;
+  if (nextIdx >= thresholds.length) return Infinity;
+  return thresholds[nextIdx] - xp;
 }
 
-function getLevelFloor(xp) {
-  return LEVEL_THRESHOLDS[getLevel(xp)];
+function getLevelFloor(xp, branch) {
+  const thresholds = BRANCH_LEVEL_THRESHOLDS[branch || 'jazz'];
+  return thresholds[getLevel(xp, branch)];
 }
 
 function calcXpGain(baseXP, minutes, currentLevel, selfRating) {
@@ -1458,7 +1535,7 @@ function calcXpGain(baseXP, minutes, currentLevel, selfRating) {
   return Math.round(baseXP * timeMult * decayMult * ratingMult);
 }
 
-function applyDecay(rpg) {
+function applyDecay(rpg, branch) {
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
@@ -1471,13 +1548,38 @@ function applyDecay(rpg) {
     const daysSince = (now - last) / (1000 * 60 * 60 * 24);
     if (daysSince > 5) {
       const decayDays = Math.floor(daysSince - 5);
-      const floor = getLevelFloor(rpg.scores[dim]);
+      const floor = getLevelFloor(rpg.scores[dim], branch);
       for (let i = 0; i < decayDays; i++) {
         rpg.scores[dim] = Math.max(floor, Math.round(rpg.scores[dim] * 0.98));
       }
     }
   }
   return rpg;
+}
+
+function migrateIfNeeded() {
+  const meta = loadMeta();
+  if (meta.version >= 2) return;
+
+  const oldRaw = localStorage.getItem(STORAGE_RPG);
+  if (oldRaw) {
+    try {
+      const oldState = JSON.parse(oldRaw);
+      saveBranchState('jazz', {
+        scores: { ...defaultRpgState().scores, ...(oldState.scores || {}) },
+        lastPractice: { ...defaultRpgState().lastPractice, ...(oldState.lastPractice || {}) },
+        history: oldState.history || [],
+        createdAt: oldState.createdAt || new Date().toISOString()
+      });
+    } catch(e) { saveBranchState('jazz', defaultRpgState()); }
+  } else {
+    saveBranchState('jazz', defaultRpgState());
+  }
+  if (!localStorage.getItem(storageKey('pop'))) saveBranchState('pop', defaultRpgState());
+  if (!localStorage.getItem(storageKey('neon'))) saveBranchState('neon', defaultRpgState());
+
+  meta.version = 2;
+  saveMeta(meta);
 }
 
 // ============================================================
@@ -1711,60 +1813,61 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const ratingSliders = document.querySelectorAll('#selfRatingGrid input[type="range"]');
   ratingSliders.forEach(s => { ratings[s.dataset.dim] = parseInt(s.value); });
 
-  // Load RPG state and apply decay
-  let rpg = loadRpgState();
-  rpg = applyDecay(rpg);
+  // Calculate XP for all 3 branches
+  const xpGainedByBranch = {};
+  const rpgByBranch = {};
+  for (const branch of BRANCH_KEYS) {
+    let rpg = loadBranchState(branch);
+    rpg = applyDecay(rpg, branch);
 
-  // Calculate XP gained
-  const xpGained = {};
-  for (const tag of tags) {
-    const weights = TAG_WEIGHTS[tag];
-    if (!weights) continue;
-    for (const [dim, baseXP] of Object.entries(weights)) {
-      const currentLevel = getLevel(rpg.scores[dim]);
-      const gain = calcXpGain(baseXP, time, currentLevel, ratings[dim]);
-      xpGained[dim] = (xpGained[dim] || 0) + gain;
-      rpg.scores[dim] += gain;
-      rpg.lastPractice[dim] = dateStr;
-    }
-  }
-
-  // If no tags selected, self-ratings >= 6 give small base XP
-  if (tags.length === 0) {
-    for (const dim of DIM_KEYS) {
-      if (ratings[dim] && ratings[dim] >= 6) {
-        const gain = calcXpGain(2, time, getLevel(rpg.scores[dim]), ratings[dim]);
+    const xpGained = {};
+    for (const tag of tags) {
+      const weights = BRANCH_TAG_WEIGHTS[branch][tag];
+      if (!weights) continue;
+      for (const [dim, baseXP] of Object.entries(weights)) {
+        const currentLevel = getLevel(rpg.scores[dim], branch);
+        const gain = calcXpGain(baseXP, time, currentLevel, ratings[dim]);
         xpGained[dim] = (xpGained[dim] || 0) + gain;
         rpg.scores[dim] += gain;
         rpg.lastPractice[dim] = dateStr;
       }
     }
+
+    // If no tags selected, self-ratings >= 6 give small base XP
+    if (tags.length === 0) {
+      for (const dim of DIM_KEYS) {
+        if (ratings[dim] && ratings[dim] >= 6) {
+          const gain = calcXpGain(2, time, getLevel(rpg.scores[dim], branch), ratings[dim]);
+          xpGained[dim] = (xpGained[dim] || 0) + gain;
+          rpg.scores[dim] += gain;
+          rpg.lastPractice[dim] = dateStr;
+        }
+      }
+    }
+
+    rpg.history.push({ date: dateStr, tags, ratings, xpGained, time, mood });
+    if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
+    saveBranchState(branch, rpg);
+    xpGainedByBranch[branch] = xpGained;
+    rpgByBranch[branch] = rpg;
   }
-
-  // Record history
-  rpg.history.push({
-    date: dateStr,
-    tags,
-    ratings,
-    xpGained,
-    time,
-    mood
-  });
-  if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
-
-  saveRpgState(rpg);
   updateDataSize();
 
-  // Save original checkin data (extended with tags/ratings/xpGained)
-  setCheckin(dateStr, { time, content, mood, tags, ratings, xpGained, updatedAt: new Date().toISOString() });
+  // Save checkin data with per-branch XP
+  setCheckin(dateStr, {
+    time, content, mood, tags, ratings,
+    xpGainedByBranch,
+    updatedAt: new Date().toISOString()
+  });
 
   selectedDate = dateStr;
   closeModal();
   renderCalendar();
 
   // Show settlement screen
-  if (Object.keys(xpGained).length > 0 || Object.values(ratings).some(r => r >= 6)) {
-    showSettlement(dateStr, xpGained, rpg, tags, ratings);
+  const hasXP = Object.values(xpGainedByBranch).some(g => Object.keys(g).length > 0);
+  if (hasXP || Object.values(ratings).some(r => r >= 6)) {
+    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings);
   }
 });
 
@@ -1879,7 +1982,7 @@ function renderStats() {
   chart.innerHTML = html;
 
   updateStreak();
-  renderRpgPanel();
+  renderRpgPanel(loadMeta().activeBranch);
 }
 
 // ============================================================
@@ -1904,7 +2007,7 @@ document.getElementById('btnNextMonth').addEventListener('click', () => {
 // ============================================================
 // PRACTICE PLAN CONTENT
 // ============================================================
-const planData = [
+const BRANCH_PLAN_DATA = { jazz: [
   {
     title: '1. Walking Bass 四步构建法',
     body: `
@@ -2117,11 +2220,337 @@ const planData = [
 <strong>每次练琴录音。</strong>你弹的时候觉得还行，回听全是问题——这就是进步空间。<br>
 <strong>慢就是快。</strong>60bpm走稳了，提速自然；100bpm走得稀碎，永远不稳。</div>`
   }
-];
+],
 
-function renderPlan() {
+pop: [
+  {
+    title: '1. 流行贝斯核心节奏型',
+    body: `
+<div class="highlight-box"><strong>流行贝斯的第一原则：</strong>锁住底鼓（Kick Drum），你就是节奏组的基石。根音+五度的律动可以撑起90%的流行歌。</div>
+
+<h3>十大常见节奏型</h3>
+<table>
+<tr><th>节奏型</th><th>描述</th><th>示例歌曲</th></tr>
+<tr><td>Root-5th 八分</td><td>根音→五度，八分音符交替</td><td>U2 - With or Without You</td></tr>
+<tr><td>Root-5th 附点</td><td>根音长，五度短，附点感</td><td>Maroon 5 - Sugar</td></tr>
+<tr><td>Root-3-5 上行</td><td>根音→三音→五度，每拍一个</td><td>Beatles - Let It Be</td></tr>
+<tr><td>Root-Root-5-5</td><td>两拍根音两拍五度</td><td>Taylor Swift - Shake It Off</td></tr>
+<tr><td>Root-5-6-b7</td><td>加六音和降七音过渡</td><td>Bruno Mars - Uptown Funk</td></tr>
+<tr><td>全八分驱动</td><td>每拍根音/五度不间断</td><td>Green Day - American Idiot</td></tr>
+<tr><td>切分R&B</td><td>重拍落在反拍</td><td>Justin Timberlake - SexyBack</td></tr>
+<tr><td>Slap 根基</td><td>拇指根音+食指五度</td><td>Jamiroquai - Cosmic Girl</td></tr>
+<tr><td>流动根音</td><td>根音+经过音，像Walking但简</td><td>Beatles - Something</td></tr>
+<tr><td>全休止留白</td><td>只在关键拍弹</td><td>Billie Eilish - bad guy</td></tr>
+</table>
+
+<h3>练习方法</h3>
+<ul><li>和底鼓一起弹：放原曲，只弹底鼓拍</li><li>节拍器开2、4拍（跟爵士一样重要！）</li><li>录音对比：弹完和原曲叠在一起听</li></ul>`
+  },
+  {
+    title: '2. 流行和声进行速查',
+    body: `
+<h3>四大万能进行</h3>
+<table>
+<tr><th>进行</th><th>公式</th><th>代表曲</th></tr>
+<tr><td>I - V - vi - IV</td><td>C - G - Am - F</td><td>Let It Be, Don't Stop Believin'</td></tr>
+<tr><td>vi - IV - I - V</td><td>Am - F - C - G</td><td>Hello, Numb</td></tr>
+<tr><td>I - IV - vi - V</td><td>C - F - Am - G</td><td>Perfect, Count On Me</td></tr>
+<tr><td>ii - V - I</td><td>Dm - G - C</td><td>Sunday Morning, Autumn Leaves</td></tr>
+</table>
+
+<h3>和声简化技巧</h3>
+<p>遇到复杂和弦直接看根音！流行贝斯很多时候弹根音就够了：</p>
+<ul><li>Gsus4 → 弹 G</li><li>Cadd9 → 弹 C</li><li>Am7/G → 弹 G（注意 Slash Chord 弹最低音）</li><li>F/A → 弹 A</li></ul>
+
+<h3>Nashville 数字系统</h3>
+<p>用 1-7 代替音名，方便移调沟通：</p>
+<p>C调：1=C, 2m=Dm, 3m=Em, 4=F, 5=G, 6m=Am, 7dim=Bdim</p>
+<p>职业棚虫的通用语言，必须会！</p>`
+  },
+  {
+    title: '3. 流行贝斯音色与技巧',
+    body: `
+<h3>基本音色塑造</h3>
+<ul>
+<li><strong>指弹 (Fingerstyle)：</strong>最常用，圆润温暖，适合抒情、R&B。手指拨弦时稍微靠前（靠近琴颈拾音器）获得更圆的声音。</li>
+<li><strong>拨片 (Pick)：</strong>攻击感强，适合摇滚、朋克。用较厚的拨片（≥1.0mm）减少刮弦声。</li>
+<li><strong>闷音 (Palm Mute)：</strong>手掌根部轻触琴桥，音头变短。60-70年代老摇滚的根基音色。</li>
+<li><strong>Ghost Note：</strong>左手虚按，右手正常拨，发出"嗒嗒"闷音。Funk/R&B必备。</li>
+</ul>
+
+<h3>常用效果器</h3>
+<ul><li>压缩 (Compressor) — 让每个音音量均匀，流行贝斯几乎必开</li><li>EQ — 低频60-100Hz加厚，中高频2-4kHz加清晰度</li><li>过载 (Overdrive) — 轻微过载让贝斯在混音中"站"出来</li><li>合唱 (Chorus) — 80年代流行味</li></ul>
+
+<h3>Slap 基础</h3>
+<p>拇指击弦（Thumb）+ 食指勾弦（Pop）构成最基本 slap 语汇。练习：慢速八分音符，拇指弹E/A弦根音+五度，食指勾D/G弦。从60bpm开始。</p>`
+  },
+  {
+    title: '4. 流行扒谱方法',
+    body: `
+<h3>在密集混音中找到贝斯</h3>
+<ol>
+<li>用耳机听 — 音箱低频混在一起，分离度差</li>
+<li>EQ 技巧：把 60-200Hz 拉高，中高频拉低，贝斯线会浮出来</li>
+<li>先找和弦根音，再补充节奏型</li>
+<li>用软件降速（YouTube 0.75x / Audacity / Transcribe!）</li>
+<li>写出根音→写出节奏→写出加花</li>
+</ol>
+
+<h3>扒谱推荐顺序（由易到难）</h3>
+<ol>
+<li>The Beatles — 最简单的根音+五度，Paul McCartney 是最好的流行贝斯老师</li>
+<li>Michael Jackson — Billie Jean、Beat It，节奏精准度极高</li>
+<li>Dua Lipa — Don't Start Now，现代 Disco/Funk 贝斯典范</li>
+<li>Bruno Mars — Uptown Funk、Leave The Door Open，当代 R&B 贝斯</li>
+<li>Jamiroquai — 进阶 slap 和复杂和声</li>
+</ol>
+
+<div class="highlight-box">一首歌扒下来，不仅要知道弹什么音，更要知道<strong>为什么</strong>弹那个音——和弦是什么？那个音在几音位置？这是提升乐理的唯一捷径。</div>`
+  },
+  {
+    title: '5. 曲目分级推荐',
+    body: `
+<h3>Tier 1 - 根音弹稳（初级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>Beatles - Let It Be</td><td>四分音符根音+简单五度</td></tr>
+<tr><td>U2 - With or Without You</td><td>八分音符Root-5th循环，练习耐力</td></tr>
+<tr><td>Billie Eilish - bad guy</td><td>极简，空间感控制</td></tr>
+<tr><td>Coldplay - Yellow</td><td>根音+开放弦，音色控制</td></tr>
+<tr><td>Ed Sheeran - Perfect</td><td>I-IV-vi-V万能进行</td></tr>
+</table>
+
+<h3>Tier 2 - 律动感（中级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>Michael Jackson - Billie Jean</td><td>八分音符切分，节奏精准</td></tr>
+<tr><td>Bruno Mars - Uptown Funk</td><td>Root-5-6-b7 加 ghost note</td></tr>
+<tr><td>Daft Punk - Get Lucky</td><td>Disco Octave，八度跳</td></tr>
+<tr><td>Tame Impala - The Less I Know</td><td>流动根音+经过音</td></tr>
+<tr><td>Maroon 5 - This Love</td><td>R&B 节奏感+休止符运用</td></tr>
+</table>
+
+<h3>Tier 3 - 进阶（高级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>Jamiroquai - Runaway</td><td>Slap + 复杂和声，多段变化</td></tr>
+<tr><td>Dua Lipa - Don't Start Now</td><td>现代 Disco bass fill，16分填充</td></tr>
+<tr><td>Vulfpeck - Dean Town</td><td>纯器乐，16分驱动，手速+耐力</td></tr>
+<tr><td>Thundercat - Them Changes</td><td>现代 Neo-Soul 贝斯，和声新颖</td></tr>
+<tr><td>Muse - Hysteria</td><td>拨片16分Riff，手耐力极限训练</td></tr>
+</table>`
+  },
+  {
+    title: '6. 每日练习安排',
+    body: `
+<h3>60分钟版（工作日）</h3>
+<table>
+<tr><th>时间</th><th>内容</th></tr>
+<tr><td>0-5 min</td><td>左手指力热身（半音阶+跨弦）</td></tr>
+<tr><td>5-15 min</td><td>音阶+琶音练习（选当天调的万能和弦进行）</td></tr>
+<tr><td>15-30 min</td><td>扒谱/练曲（跟原曲弹，注意锁底鼓）</td></tr>
+<tr><td>30-45 min</td><td>节奏专项（节拍器开2、4拍，练切分/Ghost Note）</td></tr>
+<tr><td>45-55 min</td><td>Slap / 技巧专项（可选）</td></tr>
+<tr><td>55-60 min</td><td>自由跟歌弹，录一段听回放</td></tr>
+</table>
+
+<h3>120分钟版（周末）</h3>
+<table>
+<tr><th>时间</th><th>内容</th></tr>
+<tr><td>0-10 min</td><td>热身+右手交替拨弦/拨片基础</td></tr>
+<tr><td>10-25 min</td><td>音阶琶音（12调轮转，选4个调）</td></tr>
+<tr><td>25-50 min</td><td>扒一首新歌，写出完整贝斯谱</td></tr>
+<tr><td>50-75 min</td><td>节奏感强化（16分+切分+反拍专项）</td></tr>
+<tr><td>75-95 min</td><td>技术难点突破（Slap/快速拨片选一）</td></tr>
+<tr><td>95-120 min</td><td>完整跟歌弹奏+录音+自评笔记</td></tr>
+</table>
+
+<div class="highlight-box"><strong>流行贝斯和爵士不同：</strong>爵士重点在即兴造句，流行重点在<strong>稳和Groove</strong>。你一乱，整首歌就散了。节拍器是你最好的朋友。<br><strong>听底鼓！听底鼓！听底鼓！</strong>你在乐队里和鼓手锁在一起，其他乐器才能飞。</div>`
+  }
+],
+
+neon: [
+  {
+    title: '1. 霓虹贝斯核心特质',
+    body: `
+<div class="highlight-box"><strong>霓虹贝斯 = J-Pop/J-Rock/Anime Song 的高密度贝斯编配。</strong>核心是音符密度高、节奏复杂、技巧花哨，但始终服务于歌曲。</div>
+
+<h3>霓虹贝斯与传统贝斯的区别</h3>
+<table>
+<tr><th>维度</th><th>传统流行/摇滚</th><th>霓虹贝斯</th></tr>
+<tr><td>音符密度</td><td>八分/四分为主</td><td>十六分音符大量使用</td></tr>
+<tr><td>技巧</td><td>指弹/拨片基础</td><td>快速拨片/三指/点弦/Slap融合</td></tr>
+<tr><td>节奏</td><td>正拍驱动</td><td>大量切分、反拍、三连音</td></tr>
+<tr><td>加花</td><td>小节间偶尔加</td><td>频繁加花（Fill），几乎每4-8小节就有</td></tr>
+<tr><td>和声复杂度</td><td>三和弦/七和弦为主</td><td>大量转调/借用和弦/半音经过</td></tr>
+<tr><td>代表贝斯手</td><td>Paul McCartney, Pino Palladino</td><td>Jino (ZUTOMAYO), Kensuke (Ling Tosite Sigure)</td></tr>
+</table>
+
+<h3>核心技能树</h3>
+<ul>
+<li><strong>快速拨片/三指：</strong>16分音符160bpm+稳定输出</li>
+<li><strong>弦跳 (String Skipping)：</strong>快速在三根弦之间跳跃不减速</li>
+<li><strong>节奏密度：</strong>能在16分网格中精确放置每一个音</li>
+<li><strong>加花意识：</strong>知道什么时候加花、加多少、怎么收回来</li>
+<li><strong>和声敏感：</strong>J-Pop 转调频繁，需要快速识别调性变化</li></ul>`
+  },
+  {
+    title: '2. 霓虹风格和声进行',
+    body: `
+<h3>J-Pop/J-Rock 特色进行</h3>
+
+<h3>(1) Royal Road 王道进行</h3>
+<p><code>IVM7 → V7 → iii7 → vi7</code></p>
+<p>C调：Fmaj7 → G7 → Em7 → Am7</p>
+<p>这就是"J-Pop音效"的来源。在无数动漫OP/ED中出现。</p>
+
+<h3>(2) Just The Two Of Us 进行（小室进行）</h3>
+<p><code>IVM7 → V7 → I → VIm7</code></p>
+<p>90年代小室哲哉系必用。C调：Fmaj7 → G7 → C → Am7</p>
+
+<h3>(3) 半音上升进行</h3>
+<p><code>| Fmaj7 | F#dim | G7 | G#dim | Am7 |</code></p>
+<p>半音贝斯线上行，制造紧张→解决。椎名林檎/东京事变常用。</p>
+
+<h3>(4) 转调进行（副歌升Key）</h3>
+<p>许多J-Pop副歌会突然升一个全音或小三度。贝斯手需要在转调瞬间找到新调的根音。</p>
+<p>例：主歌 C 调 → 副歌 Eb 调</p>
+<p><strong>练习：</strong>听到升Key立刻在指板上找新调的 I-IV-V 位置。</p>
+
+<h3>(5) 变拍号（Math Rock 系）</h3>
+<p>Ling Tosite Sigure / 凛として時雨 以复杂拍号闻名：5/4、7/8、交替拍号。</p>
+<p>贝斯手需要能跟着奇数拍稳稳走根音，不被绊倒。</p>`
+  },
+  {
+    title: '3. 高难度技巧专项',
+    body: `
+<h3>快速交替拨片（Alternate Picking）</h3>
+<p>目标：16分音符180bpm，连续4小节不减速。</p>
+<p>练习法：节拍器开60，弹16分（=每拍4个音），逐步提速。注意手腕放松，上拨和下拨音量要均匀。</p>
+
+<h3>三指轮拨（Three-Finger Plucking）</h3>
+<p>食指→中指→无名指循环。比两指快50%。Bryan Beller 和 Billy Sheehan 的招牌。</p>
+<p>练习：先在开放弦上练三指循环，速度上来后加入跨弦。</p>
+
+<h3>弦跳（String Skipping）</h3>
+<p>E弦→D弦，跳过A弦。手要精准落在目标弦不碰到中间弦。</p>
+<p>练习：E-D-A-D-E-A-D-E... 逐渐加速。先在60bpm八分音符开始。</p>
+
+<h3>复合技巧（Slap + Pick + Tap）</h3>
+<p>一些霓虹贝斯手（如Jino）会在一段乐句中混合多种技巧：</p>
+<ul><li>前半句拨片→中间转为Slap→高潮用点弦</li></ul>
+<p>练习：每种技巧分开练到熟练，再尝试2小节拨片+2小节Slap切换。</p>
+
+<h3>速度递进训练表</h3>
+<table>
+<tr><th>阶段</th><th>目标速度</th><th>练习内容</th></tr>
+<tr><td>1</td><td>16分 @ 80bpm</td><td>单弦交替拨片，连续2小节</td></tr>
+<tr><td>2</td><td>16分 @ 100bpm</td><td>跨2根弦交替拨片</td></tr>
+<tr><td>3</td><td>16分 @ 120bpm</td><td>跨3根弦+三指轮拨</td></tr>
+<tr><td>4</td><td>16分 @ 140bpm</td><td>三连音跨弦，加左手快速换把</td></tr>
+<tr><td>5</td><td>16分 @ 160bpm</td><td>完整16分段落，加力度变化</td></tr>
+<tr><td>6</td><td>16分 @ 180bpm+</td><td>霓虹贝斯手标准速度</td></tr>
+</table>`
+  },
+  {
+    title: '4. 霓虹风格扒谱',
+    body: `
+<h3>日系音乐的扒谱特点</h3>
+<ul>
+<li><strong>混音密集：</strong>J-Pop 编曲层次极多（弦乐/合成器/双吉他/和声），贝斯容易被埋。需要学会"听穿混音"。</li>
+<li><strong>贝斯编配华丽：</strong>加花频繁，不从一而终。同一个副歌第二遍的贝斯可能和第一遍完全不同。</li>
+<li><strong>音色多变：</strong>同一首歌可能用多种音色（清音→过载→Slap→Pick），需要耳朵能分辨。</li>
+</ul>
+
+<h3>推荐扒谱工具</h3>
+<ol>
+<li>YouTube 0.5x/0.75x 速度 — 免费，够用</li>
+<li>Moose（iOS/Android）— 精确降速+EQ+循环，手机扒歌神器</li>
+<li>Transcribe!（PC/Mac）— 专业级，可单独提升低频</li>
+<li>Moises.ai — AI 分轨，可以把贝斯轨道单独提取（有时不准但有用）</li>
+</ol>
+
+<h3>扒谱推荐贝斯手（由易到难）</h3>
+<ol>
+<li><strong>亀田誠治 (Seiji Kameda)</strong> — 东京事变/椎名林檎制作人，贝斯编配教科书级别</li>
+<li><strong>Jino (ジノ)</strong> — ZUTOMAYO，当代霓虹贝斯技术天花板</li>
+<li><strong>Kensuke (345/凛として時雨)</strong> — Math Rock/Post-Hardcore 贝斯，拍号变化多</li>
+<li><strong>Misa (BAND-MAID)</strong> — 女贝斯手，硬摇滚+技术流</li>
+<li><strong>Natsuki (Sokoninaru)</strong> — 三人乐队，贝斯同时承担节奏和旋律</li>
+</ol>
+
+<div class="highlight-box"><strong>扒完一首歌后一定要分析：</strong>贝斯在每段做了什么？Intro怎么进？A段为什么简单？副歌为什么突然密集？间奏solo用了什么音阶？理解了编曲意图才算真的扒完。</div>`
+  },
+  {
+    title: '5. 曲目分级推荐',
+    body: `
+<h3>Tier 1 - 入门霓虹（初级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>YOASOBI - 夜に駆ける</td><td>八分根音+五度，和声清晰，节奏快但音符简单</td></tr>
+<tr><td>King Gnu - 白日</td><td>情绪起伏大，贝斯安静→爆发段跟随</td></tr>
+<tr><td>Official髭男dism - Pretender</td><td>流行J-Pop贝斯，根音+简单加花</td></tr>
+<tr><td>米津玄師 - Lemon</td><td>慢歌，贝斯编得很美，学习留白</td></tr>
+</table>
+
+<h3>Tier 2 - 标准霓虹（中级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>Ado - うっせぇわ</td><td>激进摇滚，16分驱动+切分</td></tr>
+<tr><td>Eve - 廻廻奇譚</td><td>快节奏+大量加花，考验耐力</td></tr>
+<tr><td>LiSA - 紅蓮華</td><td>Anime Rock标准模板，副歌爆发力</td></tr>
+<tr><td>ずっと真夜中でいいのに (ZUTOMAYO) - 秒針を噛む</td><td>Jino的复杂贝斯线，16分+弦跳</td></tr>
+<tr><td>ヨルシカ - ただ君に晴れ</td><td>密集16分，音程跳跃大</td></tr>
+</table>
+
+<h3>Tier 3 - 上级霓虹（高级）</h3>
+<table>
+<tr><th>歌曲</th><th>贝斯要点</th></tr>
+<tr><td>ZUTOMAYO - お勉強しといてよ</td><td>Jino技术巅峰，Slap+拨片+三指混合</td></tr>
+<tr><td>凛として時雨 - abnormalize</td><td>变拍号7/8+5/4，贝斯+鼓紧密咬合</td></tr>
+<tr><td>BAND-MAID - DOMINATION</td><td>硬摇滚速度+技术贝斯solo</td></tr>
+<tr><td>Sokoninaru - 最低</td><td>三人乐队贝斯当吉他+贝斯用</td></tr>
+<tr><td>tricot - おちゃんせんすぅす</td><td>Math Rock贝斯，拍号变化极快</td></tr>
+</table>`
+  },
+  {
+    title: '6. 节奏强化训练',
+    body: `
+<h3>"16分网格"基础训练</h3>
+<p>把一小节视作16个位置（16分音符），你可以在任意位置放音。先练基础网格：</p>
+<ul>
+<li>全部16个位置都弹（16分连续）→ 第1,3,5,7... 奇数位置弹 → 第2,4,6,8... 偶数位置弹</li>
+<li>只弹第1,4,7,11,13,15位置 → 制造"碎拍感"</li>
+<li>随机在16个位置中选5个弹 → 制造不规则律动</li>
+</ul>
+
+<h3>切分专项</h3>
+<p>节拍器开40bpm（很慢），在每拍的"e"或"a"位置弹——训练对反拍位置的掌控。</p>
+<p>口诀：1-e-&-a-2-e-&-a-3-e-&-a-4-e-&-a</p>
+
+<h3>三连音专项</h3>
+<p>在J-Pop和高难度段落中三连音频繁出现：</p>
+<ul><li>1-2-3 2-2-3 3-2-3 4-2-3（每拍三连音）</li><li>练习：节拍器40bpm，在一拍内均匀弹3个音</li><li>进阶：第一拍三连音→第二拍八分→第三拍十六分→第四拍三连音，混合切换</li></ul>
+
+<h3>奇数拍训练</h3>
+<p>5/4：每小节5拍，跟着节拍器数"1-2-3-4-5"</p>
+<p>7/8：每小节7个八分音符，"1-2, 1-2, 1-2-3" 或 "1-2-3, 1-2, 1-2"</p>
+
+<div class="highlight-box"><strong>节奏感 = 霓虹贝斯手的命。</strong>音符再花、技巧再炫，节奏不稳就什么都不是。每天至少花15分钟在纯节奏训练上——不开琴，只用手拍节奏，用嘴数拍子。这是最被低估但回报最高的练习。</div>`
+  }
+]
+
+};
+
+function renderPlan(branch) {
+  const branchKey = branch || loadMeta().activeBranch || 'jazz';
+  // Update tabs
+  document.querySelectorAll('#planBranchTabs .char-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.branch === branchKey);
+  });
+  const data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
   const container = document.getElementById('planSections');
-  container.innerHTML = planData.map((section, i) => `
+  container.innerHTML = data.map((section, i) => `
     <div class="plan-section ${i === 0 ? 'open' : ''}">
       <div class="plan-section-header" data-index="${i}">
         <span>${section.title}</span>
@@ -2432,75 +2861,95 @@ function renderRefTable() {
 // ============================================================
 // SETTLEMENT FUNCTIONS
 // ============================================================
-function showSettlement(dateStr, xpGained, rpg, tags, ratings) {
+function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings) {
   const overlay = document.getElementById('settlementOverlay');
   if (!overlay) return;
-  const totalXP = Object.values(xpGained || {}).reduce((a, b) => a + b, 0);
 
-  // Screen 1: Summary
+  // Screen 1: Summary — show XP for all 3 branches
   const xpList = document.getElementById('settlementXpList');
   if (xpList) {
-    xpList.innerHTML = DIM_KEYS.map(key => {
-      const gained = (xpGained && xpGained[key]) || 0;
-      const cls = gained === 0 ? ' zero' : '';
-      return `<div class="xp-row${cls}">
-        <span class="dim-name">${DIM_EMOJI[key]} ${DIM_LABELS[key]}</span>
-        <span class="dim-xp">${gained > 0 ? '+' : ''}${gained} XP</span>
-      </div>`;
-    }).join('');
+    let html = '';
+    for (const branch of BRANCH_KEYS) {
+      const xpGained = xpGainedByBranch[branch] || {};
+      const totalBranch = Object.values(xpGained).reduce((a, b) => a + b, 0);
+      html += `<div class="settlement-branch-title">${BRANCH_EMOJI[branch]} ${BRANCH_LABELS[branch]}${totalBranch > 0 ? ' +' + totalBranch + ' XP' : ''}</div>`;
+      html += DIM_KEYS.map(key => {
+        const gained = xpGained[key] || 0;
+        const cls = gained === 0 ? ' zero' : '';
+        return `<div class="xp-row${cls}">
+          <span class="dim-name">${DIM_EMOJI[key]} ${DIM_LABELS[key]}</span>
+          <span class="dim-xp">${gained > 0 ? '+' : ''}${gained} XP</span>
+        </div>`;
+      }).join('');
+    }
+    xpList.innerHTML = html;
+    xpList.style.gridTemplateColumns = '1fr 1fr 1fr';
   }
   const totalEl = document.getElementById('settlementTotalXp');
-  if (totalEl) totalEl.textContent = totalXP;
+  if (totalEl) {
+    let grand = 0;
+    for (const branch of BRANCH_KEYS) {
+      const g = xpGainedByBranch[branch] || {};
+      grand += Object.values(g).reduce((a, b) => a + b, 0);
+    }
+    totalEl.textContent = grand;
+  }
 
-  // Screen 2: RPG bars
+  // Screen 2: RPG bars — show all 3 branches stacked
   let hasLevelUp = false;
   const barsEl = document.getElementById('settlementBars');
   if (barsEl) {
-    barsEl.innerHTML = DIM_KEYS.map(key => {
-      const xp = rpg.scores[key] || 0;
-      const level = getLevel(xp);
-      const gained = (xpGained && xpGained[key]) || 0;
-      const prevLevel = getLevel(Math.max(0, xp - gained));
-      const levelName = LEVEL_NAMES[level];
-      const nextThresh = LEVEL_THRESHOLDS[level + 1] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-      const prevThresh = LEVEL_THRESHOLDS[level];
-      const pct = nextThresh === Infinity ? 100 : Math.min(100, Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100));
-
-      if (level > prevLevel && level < LEVEL_NAMES.length - 1) hasLevelUp = true;
-
-      return `<div class="settlement-bar-row">
-        <span class="bar-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0, 4)}</span>
-        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
-        <span class="bar-lvl">${levelName}</span>
-      </div>`;
-    }).join('');
+    let html = '';
+    for (const branch of BRANCH_KEYS) {
+      const rpg = rpgByBranch[branch];
+      if (!rpg) continue;
+      const xpGained = xpGainedByBranch[branch] || {};
+      const thresholds = BRANCH_LEVEL_THRESHOLDS[branch];
+      html += `<div class="settlement-branch-title">${BRANCH_EMOJI[branch]} ${BRANCH_LABELS[branch]}</div>`;
+      html += DIM_KEYS.map(key => {
+        const xp = rpg.scores[key] || 0;
+        const level = getLevel(xp, branch);
+        const gained = xpGained[key] || 0;
+        const prevLevel = getLevel(Math.max(0, xp - gained), branch);
+        const levelName = LEVEL_NAMES[level];
+        const nextThresh = thresholds[level + 1] || thresholds[thresholds.length - 1];
+        const prevThresh = thresholds[level];
+        const pct = nextThresh === Infinity ? 100 : Math.min(100, Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100));
+        if (level > prevLevel && level < LEVEL_NAMES.length - 1) hasLevelUp = true;
+        return `<div class="settlement-bar-row">
+          <span class="bar-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0, 4)}</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <span class="bar-lvl">${levelName}</span>
+        </div>`;
+      }).join('');
+    }
+    barsEl.innerHTML = html;
   }
 
   // Level up
   const levelUpEl = document.getElementById('rpgLevelUp');
   if (levelUpEl) {
-    if (hasLevelUp) {
-      levelUpEl.style.display = 'block';
-      playLevelUpSound();
-    } else {
-      levelUpEl.style.display = 'none';
+    levelUpEl.style.display = hasLevelUp ? 'block' : 'none';
+    if (hasLevelUp) playLevelUpSound();
+  }
+
+  // Road progress (use active branch)
+  const roadEl = document.getElementById('rpgRoad');
+  if (roadEl) {
+    const activeBranch = loadMeta().activeBranch || 'jazz';
+    const arpg = rpgByBranch[activeBranch];
+    if (arpg) {
+      const avgProgress = DIM_KEYS.reduce((sum, key) => {
+        return sum + getLevel(arpg.scores[key] || 0, activeBranch) / (LEVEL_NAMES.length - 1);
+      }, 0) / DIM_KEYS.length;
+      roadEl.style.setProperty('--road-progress', Math.round(avgProgress * 100) + '%');
     }
   }
 
-  // Road progress
-  const roadEl = document.getElementById('rpgRoad');
-  if (roadEl) {
-    const avgProgress = DIM_KEYS.reduce((sum, key) => {
-      const xp = rpg.scores[key] || 0;
-      return sum + getLevel(xp) / (LEVEL_NAMES.length - 1);
-    }, 0) / DIM_KEYS.length;
-    roadEl.style.setProperty('--road-progress', Math.round(avgProgress * 100) + '%');
-  }
-
-  // Screen 3: Advice
+  // Screen 3: Advice (combined across all branches)
   const adviceEl = document.getElementById('adviceBox');
   if (adviceEl) {
-    adviceEl.innerHTML = generateAdvice(rpg, tags, ratings);
+    adviceEl.innerHTML = generateAdvice(rpgByBranch, tags, ratings);
   }
 
   overlay.classList.add('show');
@@ -2508,34 +2957,39 @@ function showSettlement(dateStr, xpGained, rpg, tags, ratings) {
   if (modal) modal.scrollTop = 0;
 }
 
-function generateAdvice(rpg, tags, ratings) {
+function generateAdvice(rpgByBranch, tags, ratings) {
   const lines = [];
   const now = new Date();
+  const activeBranch = loadMeta().activeBranch || 'jazz';
+  // Priority: check active branch first, then others
+  const branchOrder = [activeBranch, ...BRANCH_KEYS.filter(b => b !== activeBranch)];
 
-  for (const dim of DIM_KEYS) {
-    const lastDate = rpg.lastPractice[dim];
-    if (!lastDate) continue;
-    const daysSince = (now - new Date(lastDate)) / (1000 * 60 * 60 * 24);
-    if (daysSince >= 4 && daysSince <= 5) {
-      lines.push(`⚠️ <span class="advice-highlight">${DIM_LABELS[dim]}</span> 已${Math.floor(daysSince)}天未练，即将衰减！`);
-    } else if (daysSince > 5) {
-      lines.push(`🔻 <span class="advice-highlight">${DIM_LABELS[dim]}</span> 正在衰减中，快安排练习！`);
+  for (const branch of branchOrder) {
+    const rpg = rpgByBranch[branch];
+    if (!rpg) continue;
+    for (const dim of DIM_KEYS) {
+      const lastDate = rpg.lastPractice[dim];
+      if (!lastDate) continue;
+      const daysSince = (now - new Date(lastDate)) / (1000 * 60 * 60 * 24);
+      if (daysSince >= 4 && daysSince <= 5) {
+        lines.push(`⚠️ [${BRANCH_LABELS[branch]}] ${DIM_LABELS[dim]} 已${Math.floor(daysSince)}天未练，即将衰减！`);
+      } else if (daysSince > 5) {
+        lines.push(`🔻 [${BRANCH_LABELS[branch]}] ${DIM_LABELS[dim]} 正在衰减中！`);
+      }
     }
-  }
-
-  for (const dim of DIM_KEYS) {
-    const xp = rpg.scores[dim] || 0;
-    const toNext = getXpToNext(xp);
-    if (toNext !== Infinity && toNext <= 200) {
-      const nextName = LEVEL_NAMES[getLevel(xp) + 1];
-      lines.push(`⭐ <span class="advice-highlight">${DIM_LABELS[dim]}</span> 距 ${nextName} 还差 ${toNext} XP！集中突破！`);
+    for (const dim of DIM_KEYS) {
+      const xp = rpg.scores[dim] || 0;
+      const toNext = getXpToNext(xp, branch);
+      if (toNext !== Infinity && toNext <= 200) {
+        const nextName = LEVEL_NAMES[getLevel(xp, branch) + 1];
+        lines.push(`⭐ [${BRANCH_LABELS[branch]}] ${DIM_LABELS[dim]} 距 ${nextName} 还差 ${toNext} XP！`);
+      }
     }
   }
 
   if (lines.length === 0) {
     lines.push('👍 各方面均衡发展，继续保持节奏！');
   }
-
   if (!tags || tags.length === 0) {
     lines.push('💡 下次试试选择练琴标签，可以获得更精准的经验加成哦。');
   }
@@ -2566,21 +3020,32 @@ function playLevelUpSound() {
 // ============================================================
 // RPG PANEL RENDER
 // ============================================================
-function renderRpgPanel() {
-  let rpg = loadRpgState();
-  rpg = applyDecay(rpg);
-  saveRpgState(rpg);
+function renderRpgPanel(branch) {
+  const branchKey = branch || loadMeta().activeBranch || 'jazz';
+  let rpg = loadBranchState(branchKey);
+  rpg = applyDecay(rpg, branchKey);
+  saveBranchState(branchKey, rpg);
 
+  // Update branch tabs
+  document.querySelectorAll('#branchTabs .char-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.branch === branchKey);
+  });
+
+  // Update panel title
+  const panelTitle = document.querySelector('#rpgPanel h3');
+  if (panelTitle) panelTitle.textContent = `🎮 ${BRANCH_LABELS[branchKey]}属性面板`;
+
+  const thresholds = BRANCH_LEVEL_THRESHOLDS[branchKey];
   const container = document.getElementById('rpgBars');
   if (!container) return;
   container.innerHTML = DIM_KEYS.map(key => {
     const xp = rpg.scores[key] || 0;
-    const level = getLevel(xp);
+    const level = getLevel(xp, branchKey);
     const levelName = LEVEL_NAMES[level];
-    const nextThresh = LEVEL_THRESHOLDS[level + 1] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-    const prevThresh = LEVEL_THRESHOLDS[level];
+    const nextThresh = thresholds[level + 1] || thresholds[thresholds.length - 1];
+    const prevThresh = thresholds[level];
     const pct = nextThresh === Infinity ? 100 : Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100);
-    const toNext = getXpToNext(xp);
+    const toNext = getXpToNext(xp, branchKey);
 
     return `<div class="rpg-bar-row">
       <span class="rpg-dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key]}</span>
@@ -2708,7 +3173,7 @@ function isRpgInitialized() {
 }
 
 function reEvaluate() {
-  if (!confirm('⚠️ 重新评估会用 AI 重新打分，你的经验值可能降低！\n\n如果 AI 对你的描述理解不同，或你觉得进步没被准确反映，分数可能比现在更少。\n\n确定要继续吗？')) return;
+  if (!confirm('⚠️ 重新评估会用 AI 重新打分，三个分支（爵士/流行/霓虹）的经验值都会被覆盖！\n\n你的分数可能降低。如果 AI 对你的描述理解不同，或你觉得进步没被准确反映，分数可能比现在更少。\n\n确定要继续吗？')) return;
   reEvaluateMode = true;
   showCharCreation();
 }
@@ -2719,20 +3184,18 @@ function showCharCreation() {
   renderCharSliders();
 
   if (reEvaluateMode) {
-    document.querySelector('.char-creation-modal h2').textContent = '🔄 重新评估你的水平';
-    document.querySelector('.char-creation-modal .subtitle').textContent = 'AI 将根据你的描述重新打分（可能比当前分数低）';
-    // Hide manual tab and quick start, force AI tab
+    document.querySelector('.char-creation-modal h2').textContent = '🔄 重新评估你的水平（三个分支同步更新）';
+    document.querySelector('.char-creation-modal .subtitle').textContent = 'AI 将根据你的描述重新打分，三支职业同步生效';
     document.querySelector('.char-tab[data-tab="manual"]').style.display = 'none';
     document.querySelector('.char-tab[data-tab="ai"]').classList.add('active');
     document.getElementById('charTabAI').classList.add('active');
     document.getElementById('charTabManual').classList.remove('active');
     document.getElementById('btnQuickStart').parentElement.style.display = 'none';
-    // Clear previous JSON input
     document.getElementById('charJsonInput').value = '';
     document.getElementById('charJsonError').classList.remove('show');
   } else {
-    document.querySelector('.char-creation-modal h2').textContent = '🎵 创建你的爵士乐手角色';
-    document.querySelector('.char-creation-modal .subtitle').textContent = '让 AI 根据你的真实水平给出初始经验值';
+    document.querySelector('.char-creation-modal h2').textContent = '🎵 创建你的贝斯手角色（三个分支同时生成）';
+    document.querySelector('.char-creation-modal .subtitle').textContent = '同一套初始评分应用于爵士、流行、霓虹三个方向，之后各自独立成长';
     document.querySelector('.char-tab[data-tab="manual"]').style.display = '';
     document.getElementById('btnQuickStart').parentElement.style.display = '';
   }
@@ -2799,40 +3262,25 @@ function importJsonScore() {
   }
 
   if (reEvaluateMode) {
-    // Re-evaluation: preserve existing history, lastPractice, createdAt
-    const existingRpg = loadRpgState();
-    const existingInit = JSON.parse(localStorage.getItem('bass_rpg_initialized') || 'false');
-    existingRpg.scores = scores;
-    existingRpg.history.push({
-      date: new Date().toISOString().slice(0, 10),
-      tags: ['reeval'],
-      ratings: {},
-      xpGained: {},
-      time: 0,
-      mood: '',
-      note: '重新评估 — AI评估导入'
-    });
-    if (existingRpg.history.length > 365) existingRpg.history = existingRpg.history.slice(-365);
-    saveRpgState(existingRpg);
-    if (!existingInit) localStorage.setItem('bass_rpg_initialized', 'true');
-  } else {
-    // Initial creation
-    const now = new Date().toISOString();
-    localStorage.setItem('bass_rpg_initialized', 'true');
-    localStorage.setItem(STORAGE_RPG, JSON.stringify({
-      scores,
-      lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
-      history: [{
+    // Re-evaluation: update scores on all 3 branches, preserve history
+    for (const branch of BRANCH_KEYS) {
+      const state = loadBranchState(branch);
+      state.scores = { ...scores };
+      state.history.push({
         date: new Date().toISOString().slice(0, 10),
-        tags: ['init'],
+        tags: ['reeval'],
         ratings: {},
         xpGained: {},
         time: 0,
         mood: '',
-        note: '角色创建 — AI评估导入'
-      }],
-      createdAt: now
-    }));
+        note: `重新评估 — AI评估导入 [${BRANCH_LABELS[branch]}]`
+      });
+      if (state.history.length > 365) state.history = state.history.slice(-365);
+      saveBranchState(branch, state);
+    }
+    localStorage.setItem('bass_rpg_initialized', 'true');
+  } else {
+    finalizeCharCreation(scores, 'AI评估导入');
   }
 
   hideCharCreation();
@@ -2851,7 +3299,7 @@ function confirmManualScores() {
     const dimKey = CHAR_DIM_MAP[slider.dataset.dim];
     scores[dimKey] = parseInt(slider.value);
   }
-  finalizeCharCreation(scores, '角色创建 — 手动设置');
+  finalizeCharCreation(scores, '手动设置');
 }
 
 function quickStart() {
@@ -2859,26 +3307,29 @@ function quickStart() {
   for (const key of Object.keys(CHAR_DIM_MAP)) {
     scores[CHAR_DIM_MAP[key]] = 50;
   }
-  finalizeCharCreation(scores, '角色创建 — 快速开始');
+  finalizeCharCreation(scores, '快速开始');
 }
 
 function finalizeCharCreation(scores, note) {
   const now = new Date().toISOString();
   localStorage.setItem('bass_rpg_initialized', 'true');
-  localStorage.setItem(STORAGE_RPG, JSON.stringify({
-    scores,
-    lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
-    history: [{
-      date: new Date().toISOString().slice(0, 10),
-      tags: ['init'],
-      ratings: {},
-      xpGained: {},
-      time: 0,
-      mood: '',
-      note
-    }],
-    createdAt: now
-  }));
+  for (const branch of BRANCH_KEYS) {
+    saveBranchState(branch, {
+      scores: { ...scores },
+      lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
+      history: [{
+        date: new Date().toISOString().slice(0, 10),
+        tags: ['init'],
+        ratings: {},
+        xpGained: {},
+        time: 0,
+        mood: '',
+        note: `角色创建 — ${note} [${BRANCH_LABELS[branch]}]`
+      }],
+      createdAt: now
+    });
+  }
+  saveMeta({ version: 2, activeBranch: 'jazz' });
 
   hideCharCreation();
   renderCalendar();
@@ -2893,6 +3344,8 @@ function finalizeCharCreation(scores, note) {
 // INIT
 // ============================================================
 function init() {
+  migrateIfNeeded();
+
   // --- Character creation events (always bind regardless of init state) ---
   const btnCopy = document.getElementById('btnCopyPrompt');
   if (btnCopy) btnCopy.addEventListener('click', () => {
@@ -3027,6 +3480,25 @@ function init() {
 
   const btnReEvaluate = document.getElementById('btnReEvaluate');
   if (btnReEvaluate) btnReEvaluate.addEventListener('click', reEvaluate);
+
+  // Branch tabs on stats page
+  document.querySelectorAll('#branchTabs .char-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (isRpgInitialized()) {
+        const meta = loadMeta();
+        meta.activeBranch = tab.dataset.branch;
+        saveMeta(meta);
+        renderRpgPanel(tab.dataset.branch);
+      }
+    });
+  });
+
+  // Branch tabs on plan page
+  document.querySelectorAll('#planBranchTabs .char-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      renderPlan(tab.dataset.branch);
+    });
+  });
 
   const btnRefTable3 = document.getElementById('btnRefTable3');
   if (btnRefTable3) {
