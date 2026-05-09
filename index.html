@@ -1,0 +1,2882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>爵士贝斯练琴助手</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #25253e;
+    --surface2: #2e2e4a;
+    --border: #4a4a6a;
+    --text: #e8e0d0;
+    --text2: #a09880;
+    --accent: #f0b030;
+    --accent2: #d4882a;
+    --green: #58b868;
+    --red: #e04848;
+    --blue: #58a8d8;
+    --pixel-green: #48c048;
+    --pixel-dark: #16213e;
+    --radius: 0px; /* 像素风 = 直角 */
+    --shadow: 4px 4px 0px rgba(0,0,0,0.5);
+    --font-pixel: 'Press Start 2P', monospace;
+    --font-ui: 'Silkscreen', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-ui);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-pixel); font-weight: 400; }
+  h2 { font-size: 1rem; }
+  h3 { font-size: 0.75rem; }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .logo {
+    padding: 0 20px 24px;
+    font-size: 1.1em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    font-size: 0.95em;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active {
+    color: var(--accent);
+    background: rgba(232,168,64,0.08);
+    border-left-color: var(--accent);
+  }
+  .nav-icon { font-size: 1.2em; width: 24px; text-align: center; }
+
+  .streak-box {
+    margin: auto 16px 0;
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+  .streak-num { font-size: 2em; font-weight: 800; color: var(--accent); }
+  .streak-label { font-size: 0.8em; color: var(--text2); margin-top: 2px; }
+
+  /* ===== Main ===== */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 36px;
+    max-height: 100vh;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  h2 { font-size: 1rem; margin-bottom: 20px; }
+  h3 { font-size: 0.75rem; margin: 18px 0 10px; color: var(--accent); }
+
+  /* ===== Calendar ===== */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .cal-month { font-size: 1.3em; font-weight: 700; }
+  .cal-nav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.15s;
+  }
+  .cal-nav-btn:hover { background: var(--border); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .cal-day-header {
+    text-align: center;
+    font-size: 0.8em;
+    color: var(--text2);
+    padding: 8px 0;
+    font-weight: 600;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    font-size: 0.9em;
+    min-width: 40px;
+  }
+  .cal-day:hover { background: var(--surface2); }
+  .cal-day.other-month { color: var(--border); }
+  .cal-day.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal-day.checked { background: var(--surface2); }
+  .cal-day.selected { background: rgba(232,168,64,0.2); }
+
+  .cal-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 2px;
+  }
+  .cal-mood {
+    font-size: 0.7em;
+    position: absolute;
+    bottom: 3px;
+  }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 420px;
+    max-width: 90vw;
+    box-shadow: var(--shadow);
+  }
+  .modal h3 { margin-top: 0; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .form-group input, .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.95em;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .form-group textarea { min-height: 80px; }
+
+  .mood-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mood-btn {
+    font-size: 1.6em;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--bg);
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .mood-btn:hover { background: var(--surface2); }
+  .mood-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.12); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+  .btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 600;
+    border: none;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #1a1a1a; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: rgba(224,85,85,0.1); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); }
+
+  /* ===== Day detail ===== */
+  .day-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 20px;
+    display: none;
+  }
+  .day-detail.show { display: block; }
+  .day-detail h4 { margin-bottom: 12px; }
+  .day-detail .meta { color: var(--text2); font-size: 0.9em; margin-bottom: 4px; }
+  .day-detail .content { margin-top: 8px; line-height: 1.6; white-space: pre-wrap; }
+  .day-detail .mood-big { font-size: 2em; }
+
+  /* ===== Stats ===== */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    text-align: center;
+  }
+  .stat-num { font-size: 2em; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 0.8em; color: var(--text2); margin-top: 4px; }
+
+  .mood-bar { display: flex; gap: 4px; align-items: flex-end; height: 80px; margin-top: 10px; }
+  .mood-bar-item { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-width: 20px; transition: height 0.3s; }
+  .mood-bar-label { text-align: center; font-size: 0.8em; color: var(--text2); margin-top: 6px; }
+
+  /* ===== Practice Plan ===== */
+  .plan-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .plan-section-header {
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .plan-section-header:hover { background: var(--surface2); }
+  .plan-section-header .arrow {
+    transition: transform 0.2s;
+    font-size: 0.7em;
+    color: var(--text2);
+  }
+  .plan-section.open .plan-section-header .arrow { transform: rotate(90deg); }
+  .plan-section-body { display: none; padding: 0 20px 20px; line-height: 1.8; }
+  .plan-section.open .plan-section-body { display: block; }
+
+  .plan-section-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 0.9em;
+  }
+  .plan-section-body th, .plan-section-body td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .plan-section-body th { color: var(--accent); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; }
+  .plan-section-body ul, .plan-section-body ol { padding-left: 20px; }
+  .plan-section-body li { margin: 4px 0; }
+  .plan-section-body code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--accent);
+  }
+  .plan-section-body .highlight-box {
+    background: rgba(232,168,64,0.08);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 12px 0;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .sidebar {
+      width: 100%;
+      height: auto;
+      flex-direction: row;
+      padding: 10px;
+      position: static;
+      overflow-x: auto;
+      gap: 4px;
+    }
+    .logo { display: none; }
+    .nav-item { padding: 8px 12px; border-left: none; border-bottom: 2px solid transparent; font-size: 0.85em; white-space: nowrap; }
+    .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
+    .streak-box { display: none; }
+    .main { padding: 16px; max-height: none; }
+    .cal-day { font-size: 0.8em; min-width: auto; }
+  }
+
+/* ===== PIXEL THEME OVERRIDES ===== */
+
+/* Pixel borders */
+.sidebar, .modal, .plan-section, .stat-card, .day-detail, .page {
+  border: 3px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* Pixel buttons */
+.btn, .mood-btn, .cal-nav-btn {
+  font-family: var(--font-ui);
+  border: 3px solid;
+  border-color: #888 #444 #222 #666;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 0;
+  transition: none;
+}
+.btn:active, .mood-btn:active, .cal-nav-btn:active {
+  border-color: #444 #888 #666 #222;
+  transform: translate(1px, 1px);
+}
+.btn-primary {
+  border-color: #f8c848 #885800 #583800 #d09828;
+  background: var(--accent);
+  color: #1a1a1a;
+}
+.btn-danger {
+  border-color: #e07070 #882828 #581818 #c04848;
+  background: transparent;
+  color: var(--red);
+}
+.btn-danger:active {
+  border-color: #882828 #e07070 #c04848 #581818;
+  transform: translate(1px, 1px);
+}
+.btn-ghost {
+  border-color: #666 #333 #222 #555;
+  background: transparent;
+  color: var(--text2);
+}
+.btn-ghost:active {
+  border-color: #333 #666 #555 #222;
+  transform: translate(1px, 1px);
+}
+
+/* Pixel progress bars */
+.pixel-bar {
+  height: 14px;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.pixel-bar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0px,
+    var(--accent) 8px,
+    #c08020 8px,
+    #c08020 10px
+  );
+  transition: width 0.5s steps(20);
+}
+
+/* Pixel input */
+.form-group input, .form-group textarea {
+  font-family: var(--font-ui);
+  border: 2px solid var(--border);
+  background: var(--pixel-dark);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 0.8em;
+}
+.form-group input:focus, .form-group textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(240,176,48,0.3);
+}
+
+/* Nav items pixel */
+.nav-item {
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  border-left: 4px solid transparent;
+}
+.nav-item.active {
+  border-left: 4px solid var(--accent);
+}
+
+/* Sidebar pixel */
+.sidebar {
+  border-right: 4px solid var(--border);
+  background: var(--pixel-dark);
+}
+
+/* Calendar day pixel */
+.cal-day { border: 2px solid transparent; }
+.cal-day:hover { border-color: var(--accent); background: var(--surface2); }
+.cal-day.today { border-color: var(--accent); background: rgba(240,176,48,0.15); }
+.cal-day.checked { background: var(--surface2); }
+
+/* ===== Metronome ===== */
+.metro-container {
+  max-width: 440px;
+  margin: 0 auto;
+  text-align: center;
+  background: var(--surface);
+  border: 3px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 24px 20px;
+}
+.metro-pulse {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  background: var(--pixel-dark);
+  border: 4px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.05s, border-color 0.05s;
+}
+.metro-pulse-inner {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--text2);
+  transition: background 0.05s, transform 0.05s;
+}
+.metro-pulse.active { border-color: var(--accent); transform: scale(1.15); }
+.metro-pulse.active .metro-pulse-inner { background: var(--accent); transform: scale(1.6); }
+.metro-pulse.accent { border-color: var(--red); }
+.metro-pulse.accent .metro-pulse-inner { background: var(--red); }
+
+.metro-beats {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.beat-light {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  transition: background 0.05s;
+}
+.beat-light.on { background: var(--accent); border-color: var(--accent); }
+.beat-light.accent { background: var(--red); border-color: var(--red); }
+
+.metro-bpm-display { margin-bottom: 12px; }
+.metro-bpm-num {
+  font-family: var(--font-pixel);
+  font-size: 2.2em;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.metro-bpm-label {
+  display: block;
+  font-size: 0.7em;
+  color: var(--text2);
+  font-family: var(--font-ui);
+  letter-spacing: 0.1em;
+}
+.metro-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.metro-slider {
+  width: 200px;
+  -webkit-appearance: none;
+  height: 8px;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  outline: none;
+}
+.metro-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+.metro-bpm-btn {
+  width: 36px; height: 36px;
+  font-family: var(--font-pixel);
+  font-size: 1em;
+  background: var(--surface2);
+  border: 3px solid;
+  border-color: #888 #444 #222 #666;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 0;
+}
+.metro-bpm-btn:active {
+  border-color: #444 #888 #666 #222;
+  transform: translate(1px, 1px);
+}
+.metro-subdiv, .metro-accent { margin-bottom: 12px; }
+.metro-label {
+  display: block;
+  font-size: 0.7em;
+  color: var(--text2);
+  margin-bottom: 6px;
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.metro-btn-group { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.metro-opt {
+  padding: 6px 14px;
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 0;
+}
+.metro-opt.active {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.metro-toggles {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.metro-check {
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text2);
+}
+.metro-check input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.metro-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.metro-start { min-width: 160px; font-size: 1em; padding: 14px 24px; }
+.metro-tap { min-width: 80px; }
+
+/* Tag selector */
+.tag-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-chip {
+  padding: 5px 10px;
+  font-family: var(--font-ui);
+  font-size: 0.7em;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0;
+}
+.tag-chip.selected {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+/* Self rating grid */
+.self-rating-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75em;
+  font-family: var(--font-ui);
+}
+.rating-row .dim-label { min-width: 70px; color: var(--text2); font-size: 0.7em; }
+.rating-row input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: var(--pixel-dark);
+  border: 1px solid var(--border);
+}
+.rating-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  background: var(--accent);
+  border: 1px solid #fff;
+  cursor: pointer;
+}
+.rating-row .rating-val {
+  width: 24px;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.65em;
+  color: var(--accent);
+}
+
+.btn-sm { padding: 4px 10px; font-size: 0.65em; }
+
+/* ===== Settlement Screen ===== */
+.settlement-modal { width: 480px; max-width: 92vw; max-height: 85vh; overflow-y: auto; }
+.settlement-screen { padding: 8px 0; }
+.settlement-title {
+  font-family: var(--font-pixel);
+  font-size: 0.85em;
+  color: var(--accent);
+  text-align: center;
+  margin-bottom: 16px;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+}
+.settlement-xp-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.xp-row {
+  font-family: var(--font-ui);
+  font-size: 0.7em;
+  padding: 4px 8px;
+  background: var(--pixel-dark);
+  border: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+.xp-row .dim-name { color: var(--text2); }
+.xp-row .dim-xp { color: var(--accent); font-weight: 700; }
+.xp-row.zero { opacity: 0.4; }
+.settlement-total {
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.7em;
+  color: var(--green);
+  margin-bottom: 10px;
+}
+.settlement-hint {
+  text-align: center;
+  font-size: 0.6em;
+  color: var(--text2);
+  margin-top: 10px;
+  animation: blink 1.5s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* RPG Road */
+.rpg-character {
+  font-size: 2em;
+  text-align: center;
+  animation: walk 0.4s steps(4) infinite;
+}
+@keyframes walk {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.rpg-road {
+  height: 8px;
+  background: var(--border);
+  margin: 8px 20px 16px;
+  position: relative;
+  border: 2px solid var(--border);
+}
+.rpg-road::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; height: 100%;
+  width: var(--road-progress, 0%);
+  background: var(--accent);
+  transition: width 1s steps(30);
+}
+.rpg-levelup {
+  text-align: center;
+  padding: 10px;
+  margin-bottom: 10px;
+  animation: levelupPulse 0.4s steps(4) infinite;
+}
+.levelup-text {
+  font-family: var(--font-pixel);
+  font-size: 0.8em;
+  color: #ffe040;
+}
+@keyframes levelupPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Settlement bars */
+.settlement-bars { margin-bottom: 12px; padding: 0 8px; }
+.settlement-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.7em;
+  font-family: var(--font-ui);
+}
+.settlement-bar-row .bar-label {
+  width: 60px;
+  text-align: right;
+  color: var(--text2);
+  font-size: 0.65em;
+}
+.settlement-bar-row .bar-wrap {
+  flex: 1;
+  height: 12px;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  position: relative;
+}
+.settlement-bar-row .bar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 6px, #389838 6px, #389838 8px);
+  transition: width 0.6s steps(20);
+}
+.settlement-bar-row .bar-lvl {
+  width: 55px;
+  font-size: 0.6em;
+  color: var(--accent);
+  font-family: var(--font-pixel);
+}
+
+/* Advice */
+.advice-box {
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  padding: 16px;
+  font-family: var(--font-ui);
+  font-size: 0.8em;
+  line-height: 1.7;
+  color: var(--text);
+}
+.advice-box .advice-highlight {
+  color: var(--accent);
+  font-weight: 700;
+}
+/* RPG Panel */
+.rpg-panel {
+  background: var(--surface);
+  border: 3px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+.rpg-bars { display: flex; flex-direction: column; gap: 8px; }
+.rpg-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 0.72em;
+}
+.rpg-bar-row .rpg-dim-label {
+  width: 85px;
+  text-align: right;
+  color: var(--text);
+  font-size: 0.9em;
+}
+.rpg-bar-row .rpg-bar-wrap {
+  flex: 1;
+  height: 16px;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  position: relative;
+}
+.rpg-bar-row .rpg-bar-fill {
+  height: 100%;
+  transition: width 0.5s steps(20);
+}
+.rpg-bar-row .rpg-bar-fill.tech { background: repeating-linear-gradient(90deg, #e04848 0px, #e04848 6px, #b83838 6px, #b83838 8px); }
+.rpg-bar-row .rpg-bar-fill.rhythm { background: repeating-linear-gradient(90deg, #58a8d8 0px, #58a8d8 6px, #3888b8 6px, #3888b8 8px); }
+.rpg-bar-row .rpg-bar-fill.ear { background: repeating-linear-gradient(90deg, #58b868 0px, #58b868 6px, #389848 6px, #389848 8px); }
+.rpg-bar-row .rpg-bar-fill.harmony { background: repeating-linear-gradient(90deg, #c058d8 0px, #c058d8 6px, #9038a8 6px, #9038a8 8px); }
+.rpg-bar-row .rpg-bar-fill.improv { background: repeating-linear-gradient(90deg, #f0b030 0px, #f0b030 6px, #c08020 6px, #c08020 8px); }
+.rpg-bar-row .rpg-bar-fill.repertoire { background: repeating-linear-gradient(90deg, #e08050 0px, #e08050 6px, #b06038 6px, #b06038 8px); }
+.rpg-bar-row .rpg-lvl {
+  width: 50px;
+  font-size: 0.8em;
+  color: var(--accent);
+  font-family: var(--font-pixel);
+}
+.rpg-bar-row .rpg-xp {
+  width: 50px;
+  font-size: 0.65em;
+  color: var(--text2);
+  text-align: right;
+}
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: 16px 20px;
+  font-size: 0.6em;
+  color: rgba(224,224,208,0.35);
+  font-family: var(--font-ui);
+  border-top: 1px solid rgba(74,74,106,0.3);
+  margin-top: auto;
+}
+
+/* ===== Character Creation ===== */
+.char-creation-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  padding: 20px;
+}
+.char-creation-overlay.show { display: flex; }
+.char-creation-modal {
+  background: var(--surface);
+  border: 4px solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 32px 28px;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+.char-creation-modal h2 {
+  font-size: 0.9em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.char-creation-modal .subtitle {
+  font-size: 0.65em;
+  color: var(--text2);
+  margin-bottom: 20px;
+  font-family: var(--font-ui);
+}
+
+/* Tabs */
+.char-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+.char-tab {
+  padding: 8px 18px;
+  font-family: var(--font-ui);
+  font-size: 0.7em;
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 0;
+}
+.char-tab.active {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.char-tab-content { display: none; }
+.char-tab-content.active { display: block; }
+
+/* AI Eval tab */
+.prompt-template {
+  background: var(--pixel-dark);
+  border: 2px solid var(--border);
+  padding: 14px;
+  font-family: monospace;
+  font-size: 0.65em;
+  text-align: left;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.copy-btn {
+  margin-bottom: 14px;
+}
+.char-textarea {
+  width: 100%;
+  min-height: 100px;
+  margin-bottom: 12px;
+  font-family: var(--font-ui) !important;
+  border: 2px solid var(--border) !important;
+  background: var(--pixel-dark) !important;
+  color: var(--text) !important;
+  padding: 8px 10px !important;
+  font-size: 0.75em !important;
+  border-radius: 0 !important;
+  resize: vertical;
+}
+.char-hint {
+  font-size: 0.65em;
+  color: var(--text2);
+  font-family: var(--font-ui);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+.char-hint a { color: var(--accent); }
+
+/* Manual sliders tab */
+.char-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.char-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 0.7em;
+}
+.char-slider-row .slider-label {
+  width: 85px;
+  text-align: right;
+  color: var(--text);
+}
+.char-slider-row input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: var(--pixel-dark);
+  border: 1px solid var(--border);
+}
+.char-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  background: var(--accent);
+  border: 1px solid #fff;
+  cursor: pointer;
+}
+.char-slider-row .slider-val {
+  width: 40px;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.65em;
+  color: var(--accent);
+}
+
+.char-error {
+  color: var(--red);
+  font-size: 0.65em;
+  font-family: var(--font-ui);
+  margin-top: 6px;
+  display: none;
+}
+.char-error.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar">
+  <div class="logo">🎸 爵士贝斯<span>助手</span></div>
+  <div class="nav-item active" data-page="calendar">
+    <span class="nav-icon">📅</span> 日历打卡
+  </div>
+  <div class="nav-item" data-page="plan">
+    <span class="nav-icon">📖</span> 练琴计划
+  </div>
+  <div class="nav-item" data-page="stats">
+    <span class="nav-icon">📊</span> 练琴统计
+  </div>
+  <div class="nav-item" data-page="metronome">
+    <span class="nav-icon">⏱️</span> 节拍器
+  </div>
+  <div class="streak-box">
+    <div class="streak-num" id="streakCount">0</div>
+    <div class="streak-label">🔥 连续打卡天数</div>
+  </div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+  <!-- CALENDAR PAGE -->
+  <div class="page active" id="page-calendar">
+    <h2>📅 练琴日历</h2>
+    <div class="cal-header">
+      <button class="cal-nav-btn" id="btnPrevMonth">◀ 上月</button>
+      <span class="cal-month" id="calMonthLabel"></span>
+      <button class="cal-nav-btn" id="btnNextMonth">下月 ▶</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="day-detail" id="dayDetail">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <h4 id="detailDate"></h4>
+          <div class="meta" id="detailTime"></div>
+          <div class="content" id="detailContent"></div>
+        </div>
+        <div class="mood-big" id="detailMood"></div>
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-primary" id="btnEditDay">✏️ 编辑</button>
+        <button class="btn btn-danger" id="btnDeleteDay">🗑 删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN PAGE -->
+  <div class="page" id="page-plan">
+    <h2>📖 练琴计划</h2>
+    <div id="planSections"></div>
+  </div>
+
+  <!-- STATS PAGE -->
+  <div class="page" id="page-stats">
+    <h2>📊 练琴统计</h2>
+    <div class="rpg-panel" id="rpgPanel">
+      <h3 style="margin-top:0;">🎮 贝斯手属性面板</h3>
+      <div class="rpg-bars" id="rpgBars"></div>
+      <div style="text-align:right;margin-top:6px;">
+        <button class="btn btn-ghost btn-sm" id="btnRefTable3">📋 参照表</button>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="statTotalDays">0</div>
+        <div class="stat-label">本月打卡天数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statTotalMin">0</div>
+        <div class="stat-label">本月总练琴时长（分钟）</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statAvgMin">0</div>
+        <div class="stat-label">平均每次练琴时长</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statBestStreak">0</div>
+        <div class="stat-label">历史最长连续天数</div>
+      </div>
+    </div>
+    <h3>本月心情分布</h3>
+    <div id="moodChart"></div>
+  </div>
+
+  <!-- METRONOME PAGE -->
+  <div class="page" id="page-metronome">
+    <h2>⏱️ 节拍器</h2>
+
+    <div class="metro-container">
+      <div class="metro-pulse" id="metroPulse">
+        <div class="metro-pulse-inner" id="metroPulseInner"></div>
+      </div>
+
+      <div class="metro-beats" id="metroBeats">
+        <span class="beat-light" data-beat="0"></span>
+        <span class="beat-light" data-beat="1"></span>
+        <span class="beat-light" data-beat="2"></span>
+        <span class="beat-light" data-beat="3"></span>
+      </div>
+
+      <div class="metro-bpm-display">
+        <span class="metro-bpm-num" id="metroBpmNum">120</span>
+        <span class="metro-bpm-label">BPM</span>
+      </div>
+
+      <div class="metro-slider-row">
+        <button class="metro-bpm-btn" id="btnBpmMinus">-</button>
+        <input type="range" class="metro-slider" id="metroBpmSlider" min="20" max="250" value="120">
+        <button class="metro-bpm-btn" id="btnBpmPlus">+</button>
+      </div>
+
+      <div class="metro-subdiv">
+        <span class="metro-label">细分</span>
+        <div class="metro-btn-group" id="subdivGroup">
+          <button class="metro-opt active" data-subdiv="1">四分 ♩</button>
+          <button class="metro-opt" data-subdiv="2">八分 ♪</button>
+          <button class="metro-opt" data-subdiv="4">十六分 ♬</button>
+          <button class="metro-opt" data-subdiv="3">三连音 🎵</button>
+        </div>
+      </div>
+
+      <div class="metro-accent">
+        <span class="metro-label">重音</span>
+        <div class="metro-btn-group" id="accentGroup">
+          <button class="metro-opt active" data-accent="1">第1拍</button>
+          <button class="metro-opt" data-accent="24">第2 & 4拍</button>
+        </div>
+      </div>
+
+      <div class="metro-toggles">
+        <label class="metro-check"><input type="checkbox" id="chkSound" checked> 🔊 声音</label>
+        <label class="metro-check"><input type="checkbox" id="chkVisual" checked> 👁️ 视觉闪烁</label>
+      </div>
+
+      <div class="metro-controls">
+        <button class="btn btn-primary metro-start" id="btnMetroStart">▶ START</button>
+        <button class="btn btn-ghost metro-tap" id="btnTapTempo">👆 TAP</button>
+      </div>
+    </div>
+  </div>
+
+
+<!-- SETTLEMENT MODAL -->
+<!-- CHARACTER CREATION OVERLAY -->
+<div class="char-creation-overlay show" id="charCreationOverlay">
+  <div class="char-creation-modal">
+    <h2>🎵 创建你的爵士乐手角色</h2>
+    <p class="subtitle">让 AI 根据你的真实水平给出初始经验值</p>
+
+    <div class="char-tabs">
+      <button class="char-tab active" data-tab="ai">🤖 AI 评估（推荐）</button>
+      <button class="char-tab" data-tab="manual">🎚️ 手动设置</button>
+    </div>
+
+    <!-- Tab: AI Eval -->
+    <div class="char-tab-content active" id="charTabAI">
+      <p class="char-hint">复制下方 Prompt → 粘贴到 <a href="https://chat.deepseek.com" target="_blank">DeepSeek（免费）</a> → 把返回的 JSON 粘贴回来 → 导入</p>
+      <div class="prompt-template" id="promptTemplate"></div>
+      <button class="btn btn-ghost btn-sm copy-btn" id="btnCopyPrompt">📋 一键复制</button>
+
+      <textarea class="char-textarea" id="charJsonInput" placeholder="把 DeepSeek 返回的 JSON 粘贴到这里..."></textarea>
+      <p class="char-error" id="charJsonError"></p>
+      <button class="btn btn-primary" id="btnImportJson">📥 导入</button>
+    </div>
+
+    <!-- Tab: Manual -->
+    <div class="char-tab-content" id="charTabManual">
+      <div class="char-sliders" id="charSliders"></div>
+      <button class="btn btn-primary" id="btnManualConfirm">✅ 确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器</footer>
+
+<div class="modal-overlay" id="settlementOverlay">
+  <div class="modal settlement-modal" id="settlementModal">
+    <!-- Screen 1: Summary -->
+    <div class="settlement-screen" id="settlementSummary">
+      <div class="settlement-title">★ 练 琴 完 成 ! ★</div>
+      <div class="settlement-xp-list" id="settlementXpList"></div>
+      <div class="settlement-total">总获得 <span id="settlementTotalXp">0</span> XP</div>
+      <div class="settlement-hint">▼ 下滑查看详情</div>
+    </div>
+
+    <!-- Screen 2: RPG Animation -->
+    <div class="settlement-screen" id="settlementRpg">
+      <div class="rpg-character" id="rpgCharacter">🎸</div>
+      <div class="rpg-road" id="rpgRoad"></div>
+      <div class="rpg-levelup" id="rpgLevelUp" style="display:none;">
+        <span class="levelup-text">⚡ LEVEL UP! ⚡</span>
+      </div>
+      <div class="settlement-bars" id="settlementBars"></div>
+      <div class="settlement-hint">▼ 查看建议</div>
+    </div>
+
+    <!-- Screen 3: Advice -->
+    <div class="settlement-screen" id="settlementAdvice">
+      <div class="advice-box" id="adviceBox"></div>
+      <div class="btn-row" style="margin-top:14px; justify-content:center;">
+        <button class="btn btn-ghost btn-sm" id="btnRefTable2">📋 查看评分参照表</button>
+        <button class="btn btn-primary" id="btnCloseSettlement">👍 知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REFERENCE TABLE MODAL -->
+<div class="modal-overlay" id="refTableOverlay">
+  <div class="modal" style="max-width:640px; max-height:80vh; overflow-y:auto;">
+    <h3 style="margin-bottom:16px;">📋 六维评分参照表</h3>
+    <div id="refTableContent"></div>
+    <div class="btn-row" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" id="btnCloseRefTable">关闭</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ===== CHECK-IN MODAL ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">✏️ 练琴打卡</h3>
+    <div class="form-group">
+      <label>📅 日期</label>
+      <input type="date" id="inputDate">
+    </div>
+    <div class="form-group">
+      <label>⏱️ 练琴时长（分钟）</label>
+      <input type="number" id="inputTime" placeholder="例如：60" min="1" max="600">
+    </div>
+    <div class="form-group">
+      <label>🎯 练琴内容</label>
+      <textarea id="inputContent" placeholder="今天练了什么？Walking Bass、扒谱、即兴..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>🏷️ 练琴标签（可多选）</label>
+      <div class="tag-selector" id="tagSelector">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>📊 六维自评（1-10分）</label>
+      <div class="self-rating-grid" id="selfRatingGrid">
+      </div>
+    </div>
+    <div class="form-group" style="text-align:right;">
+      <button type="button" class="btn btn-ghost btn-sm" id="btnRefTable">📋 查看评分参照表</button>
+    </div>
+    <div class="form-group">
+      <label>😊 练琴心情</label>
+      <div class="mood-selector" id="moodSelector">
+        <button class="mood-btn" data-mood="😄" title="超爽">😄</button>
+        <button class="mood-btn" data-mood="🙂" title="不错">🙂</button>
+        <button class="mood-btn" data-mood="😐" title="一般">😐</button>
+        <button class="mood-btn" data-mood="😤" title="烦躁">😤</button>
+        <button class="mood-btn" data-mood="😢" title="沮丧">😢</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnSave">💾 保存</button>
+      <button class="btn btn-ghost" id="btnCancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA LAYER
+// ============================================================
+const STORAGE_KEY = 'jazz_bass_checkins';
+
+function loadCheckins() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch { return {}; }
+}
+
+function saveCheckins(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function getCheckin(dateStr) {
+  const data = loadCheckins();
+  return data[dateStr] || null;
+}
+
+function setCheckin(dateStr, checkin) {
+  const data = loadCheckins();
+  if (checkin === null) {
+    delete data[dateStr];
+  } else {
+    data[dateStr] = checkin;
+  }
+  saveCheckins(data);
+}
+
+// ============================================================
+// RPG DATA LAYER
+// ============================================================
+const STORAGE_RPG = 'bass_rpg_state';
+const DIM_KEYS = ['tech','rhythm','ear','harmony','improv','repertoire'];
+const DIM_LABELS = {
+  tech:'技术基本功', rhythm:'节奏/时值感', ear:'听力',
+  harmony:'和声/乐理', improv:'即兴/创造力', repertoire:'曲库/实战'
+};
+const DIM_EMOJI = { tech:'🔧', rhythm:'⏱️', ear:'👂', harmony:'📚', improv:'🎵', repertoire:'🎤' };
+
+const LEVEL_THRESHOLDS = [0,300,700,1300,2100,3100,4600,6300,8300,99999];
+const LEVEL_NAMES = [
+  '初级I','初级II','初级III',
+  '中级I','中级II','中级III',
+  '高级I','高级II','高级III'
+];
+
+const TAG_WEIGHTS = {
+  arpeggio:    { tech:6, harmony:2 },
+  walking:     { tech:2, rhythm:3, improv:2, repertoire:1 },
+  ear:         { ear:6, repertoire:2 },
+  metronome:   { rhythm:6 },
+  improv:      { improv:5, tech:2 },
+  theory:      { harmony:6 },
+  song:        { repertoire:4, rhythm:2, improv:1 },
+  technique:   { tech:5 }
+};
+
+const TAG_OPTIONS = [
+  { id:'arpeggio',  label:'🎹 琶音/音阶' },
+  { id:'walking',   label:'🚶 Walking Bass' },
+  { id:'ear',       label:'🎧 扒谱/练耳' },
+  { id:'metronome', label:'⏱️ 节拍器/节奏' },
+  { id:'improv',    label:'🎵 即兴/Solo' },
+  { id:'theory',    label:'📚 乐理/和声' },
+  { id:'song',      label:'🎤 曲目跟弹' },
+  { id:'technique', label:'🔧 手指/技巧' }
+];
+
+function defaultRpgState() {
+  return {
+    scores: { tech:0, rhythm:0, ear:0, harmony:0, improv:0, repertoire:0 },
+    lastPractice: { tech:null, rhythm:null, ear:null, harmony:null, improv:null, repertoire:null },
+    history: []
+  };
+}
+
+function loadRpgState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_RPG);
+    if (!raw) return defaultRpgState();
+    const saved = JSON.parse(raw);
+    const def = defaultRpgState();
+    return {
+      scores: { ...def.scores, ...(saved.scores || {}) },
+      lastPractice: { ...def.lastPractice, ...(saved.lastPractice || {}) },
+      history: saved.history || []
+    };
+  } catch { return defaultRpgState(); }
+}
+
+function saveRpgState(state) {
+  localStorage.setItem(STORAGE_RPG, JSON.stringify(state));
+}
+
+function getLevel(xp) {
+  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_THRESHOLDS[i]) return i;
+  }
+  return 0;
+}
+
+function getLevelName(xp) {
+  return LEVEL_NAMES[getLevel(xp)];
+}
+
+function getXpToNext(xp) {
+  const level = getLevel(xp);
+  const nextIdx = level + 1;
+  if (nextIdx >= LEVEL_THRESHOLDS.length) return Infinity;
+  return LEVEL_THRESHOLDS[nextIdx] - xp;
+}
+
+function getLevelFloor(xp) {
+  return LEVEL_THRESHOLDS[getLevel(xp)];
+}
+
+function calcXpGain(baseXP, minutes, currentLevel, selfRating) {
+  const timeMult = Math.max(0.1, minutes / 30);
+  const decayMult = currentLevel >= 6 ? 0.6 : 1.0;
+  const ratingMult = Math.max(0.2, (selfRating || 5) / 5);
+  return Math.round(baseXP * timeMult * decayMult * ratingMult);
+}
+
+function applyDecay(rpg) {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  for (const dim of DIM_KEYS) {
+    const lastDate = rpg.lastPractice[dim];
+    if (!lastDate) continue;
+    if (lastDate === todayStr) continue;
+
+    const last = new Date(lastDate);
+    const daysSince = (now - last) / (1000 * 60 * 60 * 24);
+    if (daysSince > 5) {
+      const decayDays = Math.floor(daysSince - 5);
+      const floor = getLevelFloor(rpg.scores[dim]);
+      for (let i = 0; i < decayDays; i++) {
+        rpg.scores[dim] = Math.max(floor, Math.round(rpg.scores[dim] * 0.98));
+      }
+    }
+  }
+  return rpg;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let currentYear, currentMonth;
+let selectedDate = null;
+let editingDate = null;
+const now = new Date();
+currentYear = now.getFullYear();
+currentMonth = now.getMonth() + 1; // 1-based
+
+const MOODS = ['😄', '🙂', '😐', '😤', '😢'];
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (metroState.running) stopMetronome();
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    if (page === 'calendar') renderCalendar();
+    if (page === 'stats') renderStats();
+    if (page === 'metronome') { /* page shown, no special init */ }
+  });
+});
+
+// ============================================================
+// CALENDAR
+// ============================================================
+function renderCalendar() {
+  document.getElementById('calMonthLabel').textContent =
+    `${currentYear} 年 ${currentMonth} 月`;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const headers = ['日', '一', '二', '三', '四', '五', '六'];
+  headers.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'cal-day-header';
+    d.textContent = h;
+    grid.appendChild(d);
+  });
+
+  const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+  const data = loadCheckins();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  // Previous month fill
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = daysInPrevMonth - i;
+    const m = currentMonth === 1 ? 12 : currentMonth - 1;
+    const y = currentMonth === 1 ? currentYear - 1 : currentYear;
+    const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    grid.appendChild(createDayEl(d, ds, true, data));
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el = createDayEl(d, ds, false, data);
+    if (ds === todayStr) el.classList.add('today');
+    if (ds === selectedDate) el.classList.add('selected');
+    grid.appendChild(el);
+  }
+
+  // Next month fill
+  const totalCells = firstDay + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let d = 1; d <= remaining; d++) {
+    const m = currentMonth === 12 ? 1 : currentMonth + 1;
+    const y = currentMonth === 12 ? currentYear + 1 : currentYear;
+    const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    grid.appendChild(createDayEl(d, ds, true, data));
+  }
+
+  updateStreak();
+  showDayDetail();
+}
+
+function createDayEl(dayNum, dateStr, isOther, data) {
+  const el = document.createElement('div');
+  el.className = 'cal-day';
+  if (isOther) el.classList.add('other-month');
+  if (data[dateStr]) el.classList.add('checked');
+  el.textContent = dayNum;
+
+  if (data[dateStr]) {
+    const dot = document.createElement('div');
+    dot.className = 'cal-dot';
+    el.appendChild(dot);
+    const moodSpan = document.createElement('span');
+    moodSpan.className = 'cal-mood';
+    moodSpan.textContent = data[dateStr].mood;
+    el.appendChild(moodSpan);
+  }
+
+  el.addEventListener('click', () => {
+    if (isOther) return;
+    if (data[dateStr]) {
+      // Has checkin: select and show detail
+      selectedDate = dateStr;
+      editingDate = dateStr;
+      renderCalendar();
+    } else {
+      // No checkin: open add modal directly
+      selectedDate = dateStr;
+      openModal(dateStr);
+    }
+  });
+
+  return el;
+}
+
+function showDayDetail() {
+  const detail = document.getElementById('dayDetail');
+  if (!selectedDate) {
+    detail.classList.remove('show');
+    return;
+  }
+  const c = getCheckin(selectedDate);
+  if (!c) {
+    detail.classList.remove('show');
+    return;
+  }
+  detail.classList.add('show');
+  document.getElementById('detailDate').textContent = selectedDate;
+  document.getElementById('detailTime').textContent = `⏱️ 练琴 ${c.time} 分钟`;
+  document.getElementById('detailContent').textContent = c.content || '（未填写内容）';
+  document.getElementById('detailMood').textContent = c.mood || '';
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function renderTagSelector(existingTags) {
+  const container = document.getElementById('tagSelector');
+  if (!container) return;
+  container.innerHTML = TAG_OPTIONS.map(t => {
+    const sel = existingTags && existingTags.includes(t.id) ? ' selected' : '';
+    return `<span class="tag-chip${sel}" data-tag="${t.id}">${t.label}</span>`;
+  }).join('');
+  container.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+  });
+}
+
+function renderSelfRatingGrid(existingRatings) {
+  const container = document.getElementById('selfRatingGrid');
+  if (!container) return;
+  container.innerHTML = DIM_KEYS.map(key => {
+    const val = (existingRatings && existingRatings[key]) || 5;
+    return `<div class="rating-row">
+      <span class="dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0,4)}</span>
+      <input type="range" min="1" max="10" value="${val}" data-dim="${key}">
+      <span class="rating-val">${val}</span>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('input[type="range"]').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      e.target.nextElementSibling.textContent = val;
+    });
+  });
+}
+
+function openModal(dateStr) {
+  editingDate = dateStr;
+  const existing = getCheckin(dateStr);
+  document.getElementById('modalTitle').textContent = existing ? '✏️ 编辑打卡' : '✏️ 练琴打卡';
+  document.getElementById('inputDate').value = dateStr;
+  document.getElementById('inputTime').value = existing ? existing.time : '';
+  document.getElementById('inputContent').value = existing ? existing.content : '';
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  if (existing && existing.mood) {
+    const moodBtn = document.querySelector(`.mood-btn[data-mood="${existing.mood}"]`);
+    if (moodBtn) moodBtn.classList.add('selected');
+  }
+  const existingTags = existing ? existing.tags : [];
+  const existingRatings = existing ? existing.ratings : null;
+  renderTagSelector(existingTags);
+  renderSelfRatingGrid(existingRatings);
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('inputTime').focus();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  editingDate = null;
+}
+
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+
+document.querySelectorAll('.mood-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const dateStr = document.getElementById('inputDate').value;
+  const time = parseInt(document.getElementById('inputTime').value);
+  const content = document.getElementById('inputContent').value.trim();
+  const moodBtn = document.querySelector('.mood-btn.selected');
+  const mood = moodBtn ? moodBtn.dataset.mood : '';
+
+  if (!dateStr) { alert('请选择日期'); return; }
+  if (!time || time < 1) { alert('请填写练琴时长'); return; }
+
+  // Collect tags
+  const tags = [];
+  const tagChips = document.querySelectorAll('#tagSelector .tag-chip.selected');
+  tagChips.forEach(c => tags.push(c.dataset.tag));
+
+  // Collect self-ratings
+  const ratings = {};
+  const ratingSliders = document.querySelectorAll('#selfRatingGrid input[type="range"]');
+  ratingSliders.forEach(s => { ratings[s.dataset.dim] = parseInt(s.value); });
+
+  // Load RPG state and apply decay
+  let rpg = loadRpgState();
+  rpg = applyDecay(rpg);
+
+  // Calculate XP gained
+  const xpGained = {};
+  for (const tag of tags) {
+    const weights = TAG_WEIGHTS[tag];
+    if (!weights) continue;
+    for (const [dim, baseXP] of Object.entries(weights)) {
+      const currentLevel = getLevel(rpg.scores[dim]);
+      const gain = calcXpGain(baseXP, time, currentLevel, ratings[dim]);
+      xpGained[dim] = (xpGained[dim] || 0) + gain;
+      rpg.scores[dim] += gain;
+      rpg.lastPractice[dim] = dateStr;
+    }
+  }
+
+  // If no tags selected, self-ratings >= 6 give small base XP
+  if (tags.length === 0) {
+    for (const dim of DIM_KEYS) {
+      if (ratings[dim] && ratings[dim] >= 6) {
+        const gain = calcXpGain(2, time, getLevel(rpg.scores[dim]), ratings[dim]);
+        xpGained[dim] = (xpGained[dim] || 0) + gain;
+        rpg.scores[dim] += gain;
+        rpg.lastPractice[dim] = dateStr;
+      }
+    }
+  }
+
+  // Record history
+  rpg.history.push({
+    date: dateStr,
+    tags,
+    ratings,
+    xpGained,
+    time,
+    mood
+  });
+  if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
+
+  saveRpgState(rpg);
+
+  // Save original checkin data (extended with tags/ratings/xpGained)
+  setCheckin(dateStr, { time, content, mood, tags, ratings, xpGained, updatedAt: new Date().toISOString() });
+
+  selectedDate = dateStr;
+  closeModal();
+  renderCalendar();
+
+  // Show settlement screen
+  if (Object.keys(xpGained).length > 0 || Object.values(ratings).some(r => r >= 6)) {
+    showSettlement(dateStr, xpGained, rpg, tags, ratings);
+  }
+});
+
+// Edit / Delete buttons
+document.getElementById('btnEditDay').addEventListener('click', () => {
+  if (selectedDate) openModal(selectedDate);
+});
+
+document.getElementById('btnDeleteDay').addEventListener('click', () => {
+  if (!selectedDate) return;
+  if (!confirm(`确定删除 ${selectedDate} 的打卡记录吗？`)) return;
+  setCheckin(selectedDate, null);
+  const detail = document.getElementById('dayDetail');
+  detail.classList.remove('show');
+  renderCalendar();
+});
+
+// "+" button for adding today's check-in
+const addBtn = document.createElement('button');
+addBtn.className = 'btn btn-primary';
+addBtn.textContent = '+ 新增打卡';
+addBtn.style.marginTop = '14px';
+addBtn.addEventListener('click', () => {
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  openModal(todayStr);
+});
+document.getElementById('page-calendar').querySelector('h2').after(addBtn);
+
+// ============================================================
+// STREAK
+// ============================================================
+function updateStreak() {
+  const data = loadCheckins();
+  let streak = 0;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+
+  while (true) {
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (data[ds]) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  document.getElementById('streakCount').textContent = streak;
+
+  // Best streak
+  let bestStreak = 0;
+  let currentStreak = 0;
+  const allDates = Object.keys(data).sort();
+  for (let i = 0; i < allDates.length; i++) {
+    if (i === 0) {
+      currentStreak = 1;
+    } else {
+      const prev = new Date(allDates[i-1]);
+      const curr = new Date(allDates[i]);
+      const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+      if (Math.abs(diff - 1) < 0.1) {
+        currentStreak++;
+      } else {
+        currentStreak = 1;
+      }
+    }
+    if (currentStreak > bestStreak) bestStreak = currentStreak;
+  }
+  document.getElementById('statBestStreak').textContent = bestStreak;
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function renderStats() {
+  const data = loadCheckins();
+  const ym = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  let totalDays = 0, totalMin = 0;
+  const moodCount = {};
+
+  Object.entries(data).forEach(([dateStr, c]) => {
+    if (!dateStr.startsWith(ym)) return;
+    totalDays++;
+    totalMin += c.time || 0;
+    if (c.mood) {
+      moodCount[c.mood] = (moodCount[c.mood] || 0) + 1;
+    }
+  });
+
+  document.getElementById('statTotalDays').textContent = totalDays;
+  document.getElementById('statTotalMin').textContent = totalMin;
+  document.getElementById('statAvgMin').textContent = totalDays > 0 ? Math.round(totalMin / totalDays) : 0;
+
+  // Mood chart
+  const chart = document.getElementById('moodChart');
+  if (totalDays === 0) {
+    chart.innerHTML = '<p style="color:var(--text2);margin-top:10px;">本月暂无打卡记录</p>';
+    return;
+  }
+
+  const maxCount = Math.max(...Object.values(moodCount), 1);
+  let html = '<div class="mood-bar">';
+  MOODS.forEach(m => {
+    const count = moodCount[m] || 0;
+    const h = Math.max(count / maxCount * 100, 4);
+    html += `<div style="text-align:center;">
+      <div class="mood-bar-item" style="height:${h}%;${count===0?'opacity:0.3':''}"></div>
+      <div class="mood-bar-label">${m}<br>${count}天</div>
+    </div>`;
+  });
+  html += '</div>';
+  chart.innerHTML = html;
+
+  updateStreak();
+  renderRpgPanel();
+}
+
+// ============================================================
+// MONTH NAVIGATION
+// ============================================================
+document.getElementById('btnPrevMonth').addEventListener('click', () => {
+  if (currentMonth === 1) { currentMonth = 12; currentYear--; }
+  else currentMonth--;
+  selectedDate = null;
+  document.getElementById('dayDetail').classList.remove('show');
+  renderCalendar();
+});
+
+document.getElementById('btnNextMonth').addEventListener('click', () => {
+  if (currentMonth === 12) { currentMonth = 1; currentYear++; }
+  else currentMonth++;
+  selectedDate = null;
+  document.getElementById('dayDetail').classList.remove('show');
+  renderCalendar();
+});
+
+// ============================================================
+// PRACTICE PLAN CONTENT
+// ============================================================
+const planData = [
+  {
+    title: '1. Walking Bass 四步构建法',
+    body: `
+<div class="highlight-box"><strong>铁律：</strong>每小节4个四分音符，第1拍弹根音，第4拍是走向下一小节的桥。</div>
+
+<h3>第一层：纯根音 + 第4拍半音趋近</h3>
+<p>以 F Blues 前4小节为例：<code>F7 | Bb7 | F7 | F7</code></p>
+<p>走法：<code>F→Ab→A→Bb</code> | <code>Bb→B→C→F</code> | <code>F→Ab→A→Bb</code> | <code>F→Ab→A→Bb</code></p>
+<p>第1拍是当前和弦根音，第4拍是下个和弦根音上方/下方的半音。</p>
+
+<h3>第二层：加入和弦音（3、5、7）</h3>
+<p>F7 和弦音 = F A C Eb，第2、3拍替换成这些：</p>
+<ul><li><code>F → A → C → (趋近Bb)</code></li><li><code>F → C → Eb → (趋近Bb)</code></li></ul>
+
+<h3>第三层：经过音与包围音</h3>
+<p>包围音 = 上方半音 → 下方半音 → 目标音</p>
+<p>例如 <code>F → C → Db→B→C</code>，后半拍包围三音再解决。</p>
+
+<h3>第四层：旋律线思维</h3>
+<ul><li>相邻小节最高音不跳超过五度</li><li>线要有方向：上行两小节→下行两小节</li><li>偶尔重复同一音制造呼吸感</li></ul>
+
+<table>
+<tr><th>原则</th><th>说明</th></tr>
+<tr><td>第1拍=根音</td><td>90%的情况如此</td></tr>
+<tr><td>第4拍=连接</td><td>半音/全音/属七音连接到下个根音</td></tr>
+<tr><td>线性运动</td><td>尽量级进，少跳进</td></tr>
+<tr><td>音域</td><td>E弦到G弦第7品之间</td></tr>
+</table>`
+  },
+  {
+    title: '2. 和弦进行速查',
+    body: `
+<h3>(1) ii-V-I 大调</h3>
+<p><code>| Dm7 | G7 | Cmaj7 | Cmaj7 |</code></p>
+<p>贝斯根音：D → G → C，先刻进手指。</p>
+
+<h3>(2) ii-V-I 小调</h3>
+<p><code>| Dm7b5 | G7b9 | Cm7 | Cm7 |</code></p>
+
+<h3>(3) Blues 进行（F调）</h3>
+<p><code>| F7 | Bb7 | F7 | Cm7 F7 |</code></p>
+<p><code>| Bb7 | Bdim | F7 | Am7 D7 |</code></p>
+<p><code>| Gm7 | C7 | F7 D7 | Gm7 C7 |</code></p>
+<p>关键：第4小节 Cm7→F7 是走向Bb7的ii-V；最后两小节是 I-VI-ii-V。</p>
+
+<h3>拿到谱子先做的事</h3>
+<ol><li>用笔圈出所有 ii-V-I</li><li>标出每段终止式（Turnaround）</li><li>写出调性中心</li></ol>
+<p><strong>不要看一个小节弹一个小节，要看出"这几小节是一个ii-V-I组"。</strong></p>`
+  },
+  {
+    title: '3. 音阶编排',
+    body: `
+<h3>第一优先：和弦琶音（Arpeggios）</h3>
+<table>
+<tr><th>和弦类型</th><th>构成</th><th>示例（C）</th></tr>
+<tr><td>Maj7</td><td>1 3 5 7</td><td>C E G B</td></tr>
+<tr><td>Dom7</td><td>1 3 5 b7</td><td>C E G Bb</td></tr>
+<tr><td>m7</td><td>1 b3 5 b7</td><td>C Eb G Bb</td></tr>
+<tr><td>m7b5</td><td>1 b3 b5 b7</td><td>C Eb Gb Bb</td></tr>
+<tr><td>Dim7</td><td>1 b3 b5 bb7</td><td>C Eb Gb A</td></tr>
+</table>
+<p><strong>练习法：</strong>按五度圈练，每个调弹一个八度，节拍器开在2、4拍。</p>
+
+<h3>第二优先：Mixolydian（属七音阶）</h3>
+<p>大调音阶降7音：<code>C D E F G A Bb</code></p>
+
+<h3>第三优先：Dorian（小七音阶）</h3>
+<p>自然小调升6音：<code>D E F G A B C</code></p>
+
+<h3>指板记忆三法</h3>
+<ul>
+<li><strong>根音定位法：</strong>记熟根音在E/A弦的位置，其他音用相对位置推</li>
+<li><strong>八度框架法：</strong>隔一弦+2品 = 八度</li>
+<li><strong>四度关系法：</strong>相邻弦同品 = 纯四度，跨一品 = 增四度</li>
+</ul>`
+  },
+  {
+    title: '4. 即兴思路',
+    body: `
+<div class="highlight-box">即兴不是"想到什么弹什么"。下限是<strong>和弦音+节奏动机</strong>，不是音阶乱跑。</div>
+
+<h3>五步即兴框架</h3>
+<ol>
+<li><strong>锚点分析：</strong>每小节第1、3拍标出和弦根音和三音/七音——这些拍点上必须弹出和弦色彩音</li>
+<li><strong>节奏动机：</strong>选一个短节奏型（2-4个音），整段solo靠它变化。<em>听众记住的是节奏，不是音阶。</em></li>
+<li><strong>限制音符：</strong>前4小节只用根音和三音，第5-8小节加入五音七音，逐步放开</li>
+<li><strong>问答造句：</strong>弹短句→留空→变化重复。前句上→后句下，前句密→后句疏</li>
+<li><strong>目标音导向：</strong>每4小节想好最后落在哪个音，往前倒推</li>
+</ol>
+
+<h3>最实用的起步练习</h3>
+<p>在Blues上solo，<strong>全程只用F小调五声音阶（F Ab Bb C Eb），但每个Chorus换一种节奏动机。</strong></p>
+<p>你会发现：不需要换音阶，光换节奏就已经听起来完全不一样了。</p>`
+  },
+  {
+    title: '5. 乐句拆解',
+    body: `
+<h3>扒谱推荐（由易到难）</h3>
+<ol>
+<li><strong>Paul Chambers</strong>——最清晰的Walking，每个音都像教科书</li>
+<li><strong>Ray Brown</strong>——律动感无与伦比，学他的时值和重音</li>
+<li><strong>Ron Carter</strong>——旋律线最美，学他的半音运用</li>
+<li><strong>Sam Jones</strong>——solo句子短而有力</li>
+</ol>
+
+<h3>一句乐句的七步改造法</h3>
+<ol>
+<li>原样扒下来→写到纸上</li>
+<li>标出和弦音（R/3/5/7）</li>
+<li>找出动机（核心节奏型+核心音程）</li>
+<li>移到11个其他调</li>
+<li>改节奏（保留音，换节奏型）</li>
+<li>改音（保留节奏型，换音）</li>
+<li>嵌入你的solo</li>
+</ol>
+
+<div class="highlight-box">一年认真扒10句，比泛泛听100首管用十倍。</div>
+
+<h3>常用爵士贝斯词汇</h3>
+<table>
+<tr><th>词汇</th><th>描述</th><th>适用位置</th></tr>
+<tr><td>半音趋近</td><td>上方/下方半音滑入目标音</td><td>第4拍</td></tr>
+<tr><td>双半音包围</td><td>上下半音→目标音</td><td>段落结尾</td></tr>
+<tr><td>八度跳</td><td>同一音高低八度交替</td><td>制造空间感</td></tr>
+<tr><td>三连音run</td><td>连续三连音上行/下行</td><td>Solo高潮</td></tr>
+<tr><td>五度循环模进</td><td>按五度圈移位短句</td><td>Turnaround</td></tr>
+</table>`
+  },
+  {
+    title: '6. 系统练习规划（三个月）',
+    body: `
+<h3>第一阶段（第1-4周）：打地基</h3>
+<p><strong>目标：</strong>在F调Blues上走出稳定好听的Walking Bass</p>
+<ul>
+<li>熟记 F7/Bb7/C7/Dm7/Gm7 琶音（E/A弦两个把位）</li>
+<li>学会"根音+半音趋近"走完整首Blues</li>
+<li>节拍器60bpm，开2、4拍</li>
+<li>开始扒第一句Paul Chambers乐句</li>
+</ul>
+
+<h3>第二阶段（第5-8周）：扩展词汇</h3>
+<p><strong>目标：</strong>F调Blues + Bb调Rhythm Changes自如Walking</p>
+<ul>
+<li>加入三音、五音、七音</li>
+<li>学会Dorian和Mixolydian在Walking里用</li>
+<li>扒完第一句乐句并移完12调</li>
+<li>学习小调ii-V-I</li>
+</ul>
+
+<h3>第三阶段（第9-12周）：加入即兴</h3>
+<p><strong>目标：</strong>在Blues上即兴solo两个Chorus</p>
+<ul>
+<li>用"限制音符法"练习solo</li>
+<li>学会用节奏动机发展句子</li>
+<li>扒第二句乐句</li>
+<li>开始接触Real Book：Autumn Leaves, Blue Bossa</li>
+</ul>
+
+<h3>推荐练习曲目顺序</h3>
+<ol>
+<li>F Blues</li>
+<li>Bb Blues</li>
+<li>Autumn Leaves</li>
+<li>Blue Bossa</li>
+<li>All of Me</li>
+<li>Take the A Train</li>
+<li>So What</li>
+<li>Oleo (Rhythm Changes)</li>
+</ol>`
+  },
+  {
+    title: '7. 每日练琴安排',
+    body: `
+<h3>60分钟版（工作日）</h3>
+<table>
+<tr><th>时间</th><th>内容</th><th>说明</th></tr>
+<tr><td>0-5 min</td><td>热身</td><td>半音阶上下行，慢速，注意力在放松</td></tr>
+<tr><td>5-15 min</td><td>技术练习</td><td>琶音/音阶，节拍器2、4拍，60-80bpm</td></tr>
+<tr><td>15-25 min</td><td>Walking练习</td><td>一首曲子，先纯根音走，再逐渐加和弦音</td></tr>
+<tr><td>25-40 min</td><td>乐句/扒谱</td><td>练习新乐句或复习已扒的，移调</td></tr>
+<tr><td>40-55 min</td><td>即兴练习</td><td>在Blues或Autumn Leaves上solo</td></tr>
+<tr><td>55-60 min</td><td>自由玩</td><td>放伴奏，抛开规则，纯凭耳朵弹</td></tr>
+</table>
+
+<h3>120分钟版（周末）</h3>
+<table>
+<tr><th>时间</th><th>内容</th></tr>
+<tr><td>0-10 min</td><td>热身 + 手指独立性练习</td></tr>
+<tr><td>10-25 min</td><td>琶音练习（12个调轮转）</td></tr>
+<tr><td>25-45 min</td><td>Walking Bass——同一首歌至少4种走法</td></tr>
+<tr><td>45-65 min</td><td>新乐句扒谱 + 分析 + 移调</td></tr>
+<tr><td>65-85 min</td><td>即兴solo——录下来，回听，标记不满意的地方</td></tr>
+<tr><td>85-110 min</td><td>跟伴奏完整演奏（Walking + Solo + Walking out）</td></tr>
+<tr><td>110-120 min</td><td>听录音 + 笔记</td></tr>
+</table>
+
+<h3>每周主题</h3>
+<table>
+<tr><th>星期</th><th>主题</th><th>重点</th></tr>
+<tr><td>周一</td><td>琶音日</td><td>一个调的所有和弦琶音，两个把位</td></tr>
+<tr><td>周二</td><td>Walking日</td><td>一首新曲子，根音→加和弦音</td></tr>
+<tr><td>周三</td><td>乐句日</td><td>扒/练一句新乐句，分析→移调→改装</td></tr>
+<tr><td>周四</td><td>即兴日</td><td>限制音符法，在Blues上solo</td></tr>
+<tr><td>周五</td><td>和声日</td><td>分析和弦进行，听辨ii-V-I</td></tr>
+<tr><td>周六</td><td>综合日</td><td>完整练习流程 + 录音回听</td></tr>
+<tr><td>周日</td><td>自由日</td><td>放伴奏随意弹，或休息</td></tr>
+</table>
+
+<div class="highlight-box"><strong>节拍器永远开在2、4拍。</strong>这是爵士贝斯手的第一条戒律。<br>
+<strong>每次练琴录音。</strong>你弹的时候觉得还行，回听全是问题——这就是进步空间。<br>
+<strong>慢就是快。</strong>60bpm走稳了，提速自然；100bpm走得稀碎，永远不稳。</div>`
+  }
+];
+
+function renderPlan() {
+  const container = document.getElementById('planSections');
+  container.innerHTML = planData.map((section, i) => `
+    <div class="plan-section ${i === 0 ? 'open' : ''}">
+      <div class="plan-section-header" data-index="${i}">
+        <span>${section.title}</span>
+        <span class="arrow">▶</span>
+      </div>
+      <div class="plan-section-body">${section.body}</div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.plan-section-header').forEach(header => {
+    header.addEventListener('click', () => {
+      header.parentElement.classList.toggle('open');
+    });
+  });
+}
+
+// ============================================================
+// METRONOME ENGINE
+// ============================================================
+let metroState = {
+  running: false,
+  bpm: 120,
+  subdiv: 1,     // 1=四分 2=八分 4=十六分 3=三连音
+  accent: '1',   // '1' = 第1拍重音, '24' = 第2&4拍重音
+  soundOn: true,
+  visualOn: true,
+  beatIndex: 0,
+  audioCtx: null,
+  intervalId: null,
+  tapTimes: []
+};
+
+function getMetroIntervalMs() {
+  const beatMs = 60000 / metroState.bpm;
+  return beatMs / metroState.subdiv;
+}
+
+function getTotalBeats() {
+  return 4 * metroState.subdiv;
+}
+
+function isAccentBeat(idx) {
+  const total = getTotalBeats();
+  const beatInMeasure = idx % total;
+  if (metroState.accent === '1') {
+    return beatInMeasure % metroState.subdiv === 0 && Math.floor(beatInMeasure / metroState.subdiv) === 0;
+  } else if (metroState.accent === '24') {
+    const bigBeat = Math.floor(beatInMeasure / metroState.subdiv);
+    const isFirstOfBigBeat = beatInMeasure % metroState.subdiv === 0;
+    return isFirstOfBigBeat && (bigBeat === 1 || bigBeat === 3);
+  }
+  return false;
+}
+
+function playClick(isAccent) {
+  if (!metroState.soundOn || !metroState.audioCtx) return;
+  const ctx = metroState.audioCtx;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = 'square';
+  osc.frequency.value = isAccent ? 1000 : 800;
+  gain.gain.setValueAtTime(0.3, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc.start(now);
+  osc.stop(now + 0.05);
+}
+
+function flashBeat(isAccent) {
+  if (!metroState.visualOn) return;
+  const pulse = document.getElementById('metroPulse');
+  const lights = document.querySelectorAll('.beat-light');
+  const total = getTotalBeats();
+  const idx = metroState.beatIndex % total;
+  const bigBeat = Math.floor(idx / metroState.subdiv);
+
+  pulse.classList.add('active');
+  if (isAccent) pulse.classList.add('accent');
+  else pulse.classList.remove('accent');
+
+  lights.forEach((l, i) => {
+    l.classList.remove('on', 'accent');
+    if (i === bigBeat) {
+      l.classList.add('on');
+      if (isAccent) l.classList.add('accent');
+    }
+  });
+
+  setTimeout(() => {
+    pulse.classList.remove('active', 'accent');
+  }, 80);
+}
+
+function metroTick() {
+  const isAccent = isAccentBeat(metroState.beatIndex);
+  playClick(isAccent);
+  flashBeat(isAccent);
+  metroState.beatIndex++;
+}
+
+function startMetronome() {
+  if (metroState.running) return;
+  if (!metroState.audioCtx) {
+    metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (metroState.audioCtx.state === 'suspended') {
+    metroState.audioCtx.resume();
+  }
+  metroState.running = true;
+  metroState.beatIndex = 0;
+  document.getElementById('btnMetroStart').textContent = '■ STOP';
+  metroTick();
+  metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+}
+
+function stopMetronome() {
+  metroState.running = false;
+  if (metroState.intervalId) {
+    clearInterval(metroState.intervalId);
+    metroState.intervalId = null;
+  }
+  document.getElementById('btnMetroStart').textContent = '▶ START';
+  document.getElementById('metroPulse').classList.remove('active', 'accent');
+  document.querySelectorAll('.beat-light').forEach(l => l.classList.remove('on', 'accent'));
+}
+
+function updateBpm(bpm) {
+  metroState.bpm = Math.max(20, Math.min(250, bpm));
+  document.getElementById('metroBpmNum').textContent = metroState.bpm;
+  document.getElementById('metroBpmSlider').value = metroState.bpm;
+  if (metroState.running) {
+    clearInterval(metroState.intervalId);
+    metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+  }
+}
+
+function handleTapTempo() {
+  const now = Date.now();
+  const times = metroState.tapTimes;
+  times.push(now);
+  while (times.length > 8) times.shift();
+  if (times.length >= 3) {
+    let sum = 0;
+    for (let i = 1; i < times.length; i++) {
+      sum += times[i] - times[i-1];
+    }
+    const avgMs = sum / (times.length - 1);
+    const bpm = Math.round(60000 / avgMs);
+    updateBpm(Math.max(20, Math.min(250, bpm)));
+  }
+  clearTimeout(metroState._tapTimeout);
+  metroState._tapTimeout = setTimeout(() => { metroState.tapTimes = []; }, 2000);
+}
+
+// ============================================================
+// REFERENCE TABLE DATA
+// ============================================================
+const REFERENCE_TABLE = {
+  tech: {
+    title: '技术基本功',
+    levels: {
+      '初级': {
+        standard: '能弹完C大调音阶（两个八度），速度80bpm八分音符',
+        anchor: '手指能准确落在品上，换把无明显断音',
+        benchmark: 'Paul Chambers - So What 中的 Walking 段落（慢速版）'
+      },
+      '中级': {
+        standard: '所有大调音阶、自然小调音阶、五声音阶，速度120bpm十六分音符',
+        anchor: '各调音阶能在E/A弦两个把位上流畅切换，不卡顿',
+        benchmark: 'Jaco Pastorius - Come On, Come Over 前奏（原速80%）'
+      },
+      '高级': {
+        standard: '音阶模进（三度、四度、六度），各调式音阶，速度140bpm+',
+        anchor: '能在任意把位即兴跑模进，不依赖肌肉记忆',
+        benchmark: 'Marcus Miller - Power 中的贝斯Solo段落'
+      }
+    }
+  },
+  rhythm: {
+    title: '节奏/时值感',
+    levels: {
+      '初级': {
+        standard: '开着节拍器，弹四分音符能稳住',
+        anchor: '节拍器60bpm，录30秒四分音符，回听偏差不超过1/32拍',
+        benchmark: 'Michael Jackson - Billie Jean 贝斯线（几乎全是八分音符）'
+      },
+      '中级': {
+        standard: '开着节拍器，弹附点、切分、休止符都能卡准',
+        anchor: '节拍器80bpm，弹附点节奏连续8小节，录音回听无抢拍拖拍',
+        benchmark: 'Rocco Prestia (Tower of Power) - What Is Hip（注意切分和休止符）'
+      },
+      '高级': {
+        standard: '能主动创造"lay back"或"push"的感觉，且保持稳定',
+        anchor: '能在同一BPM下，同一段乐句故意弹出三种时值感觉（正拍/lay back/push）',
+        benchmark: 'Ray Brown 的任何Oscar Peterson三重奏录音'
+      }
+    }
+  },
+  ear: {
+    title: '听力（耳力）',
+    levels: {
+      '初级': {
+        standard: '能听出大调和小调的区别',
+        anchor: '随机放10首流行歌，能正确说出每首是大调还是小调（准确率>80%）',
+        benchmark: 'The Beatles - Let It Be（大调） vs While My Guitar Gently Weeps（小调）'
+      },
+      '中级': {
+        standard: '能听出II-V-I进行，能在贝斯上摸出简单旋律（如儿歌）',
+        anchor: '放一首没听过的简单流行歌，10分钟内摸出贝斯线的根音进行',
+        benchmark: 'Autumn Leaves 多个版本的贝斯线比较（Cannonball / Bill Evans）'
+      },
+      '高级': {
+        standard: '能听出和弦的延伸音（9、11、13），能扒下复杂的贝斯线',
+        anchor: '能扒出Jaco或Marcus Miller的Solo段落，标注每个音的和弦功能',
+        benchmark: 'Jaco Pastorius - Portrait of Tracy（音程跨越极大）'
+      }
+    }
+  },
+  harmony: {
+    title: '和声/乐理',
+    levels: {
+      '初级': {
+        standard: '知道大/小三和弦的组成音，能弹出根三五四音',
+        anchor: '看向任意一个和弦名，3秒内弹出其根音、三音、五音、八度音',
+        benchmark: '任何流行歌的和弦进行（如 I-V-vi-IV）'
+      },
+      '中级': {
+        standard: '知道7和弦（maj7、7、m7、m7b5）的组成音，能在一个调内快速找到',
+        anchor: '随机给一个Dm7b5，立刻弹出四个组成音D-F-Ab-C',
+        benchmark: 'All of Me 或 Blue Bossa 的和弦分析'
+      },
+      '高级': {
+        standard: '理解延伸音、替代和弦、调式音阶，能分析和弦功能',
+        anchor: '能在爵士Lead Sheet上标记每个和弦的可用音阶和替代可能性',
+        benchmark: 'John Coltrane - Giant Steps 的和声分析'
+      }
+    }
+  },
+  improv: {
+    title: '即兴/创造力',
+    levels: {
+      '初级': {
+        standard: '只会弹根音或照谱弹',
+        anchor: '能在Blues 12小节上稳定走根音，偶尔在第四拍加半音趋近',
+        benchmark: '最简单的Blues Walking Bass（参考Paul Chambers早期录音）'
+      },
+      '中级': {
+        standard: '能基于和弦音做简单的Fill，加一点花',
+        anchor: '在一个12小节Blues里，能即兴2个Chorus不重复，使用和弦音+经过音',
+        benchmark: "Ray Brown - That's All 中的Solo段落"
+      },
+      '高级': {
+        standard: '能围绕旋律做即兴变奏，有自己的句子',
+        anchor: '同一首曲子连续即兴4遍，每遍都有不同的句子和动机发展',
+        benchmark: 'Niels-Henning Ørsted Pedersen 的任何Solo录音'
+      }
+    }
+  },
+  repertoire: {
+    title: '曲库/实战',
+    levels: {
+      '初级': {
+        standard: '能背下5首流行歌的贝斯线',
+        anchor: '不看谱子弹完5首歌，录音与录音室版本对比无明显错误',
+        benchmark: '陶喆 - 小镇姑娘 / Billie Jean / 简单流行歌'
+      },
+      '中级': {
+        standard: '能背下15首不同风格的歌（流行、摇滚、Funk）',
+        anchor: '能在一个jam session里不看谱走完5首不同风格的曲子',
+        benchmark: '能跟完一场小型jam session（比如酒吧开放麦）'
+      },
+      '高级': {
+        standard: '能不用谱子上台跟乐队走完一场演出（40分钟+）',
+        anchor: '陌生乐队给和弦走向就能跟，不需要提前排练完整曲目',
+        benchmark: '职业贝斯手的基本要求：靠Lead Sheet或耳朵就能演出'
+      }
+    }
+  }
+};
+
+function renderRefTable() {
+  const container = document.getElementById('refTableContent');
+  if (!container) return;
+  let html = '';
+  for (const [dimKey, dimData] of Object.entries(REFERENCE_TABLE)) {
+    html += `<h3 style="margin-top:16px;color:var(--accent);">${DIM_EMOJI[dimKey]} ${dimData.title}</h3>`;
+    for (const [level, data] of Object.entries(dimData.levels)) {
+      html += `<div class="plan-section" style="margin-bottom:6px;">
+        <div class="plan-section-header" style="padding:10px 14px;">
+          <span style="font-size:0.8em;">【${level}】${data.standard.slice(0, 40)}...</span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="plan-section-body">
+          <p><strong>可验证标准：</strong>${data.anchor}</p>
+          <p><strong>标杆参照：</strong>${data.benchmark}</p>
+        </div>
+      </div>`;
+    }
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.plan-section-header').forEach(header => {
+    header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
+  });
+}
+
+// ============================================================
+// SETTLEMENT FUNCTIONS
+// ============================================================
+function showSettlement(dateStr, xpGained, rpg, tags, ratings) {
+  const overlay = document.getElementById('settlementOverlay');
+  if (!overlay) return;
+  const totalXP = Object.values(xpGained || {}).reduce((a, b) => a + b, 0);
+
+  // Screen 1: Summary
+  const xpList = document.getElementById('settlementXpList');
+  if (xpList) {
+    xpList.innerHTML = DIM_KEYS.map(key => {
+      const gained = (xpGained && xpGained[key]) || 0;
+      const cls = gained === 0 ? ' zero' : '';
+      return `<div class="xp-row${cls}">
+        <span class="dim-name">${DIM_EMOJI[key]} ${DIM_LABELS[key]}</span>
+        <span class="dim-xp">${gained > 0 ? '+' : ''}${gained} XP</span>
+      </div>`;
+    }).join('');
+  }
+  const totalEl = document.getElementById('settlementTotalXp');
+  if (totalEl) totalEl.textContent = totalXP;
+
+  // Screen 2: RPG bars
+  let hasLevelUp = false;
+  const barsEl = document.getElementById('settlementBars');
+  if (barsEl) {
+    barsEl.innerHTML = DIM_KEYS.map(key => {
+      const xp = rpg.scores[key] || 0;
+      const level = getLevel(xp);
+      const gained = (xpGained && xpGained[key]) || 0;
+      const prevLevel = getLevel(Math.max(0, xp - gained));
+      const levelName = LEVEL_NAMES[level];
+      const nextThresh = LEVEL_THRESHOLDS[level + 1] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+      const prevThresh = LEVEL_THRESHOLDS[level];
+      const pct = nextThresh === Infinity ? 100 : Math.min(100, Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100));
+
+      if (level > prevLevel && level < LEVEL_NAMES.length - 1) hasLevelUp = true;
+
+      return `<div class="settlement-bar-row">
+        <span class="bar-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0, 4)}</span>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <span class="bar-lvl">${levelName}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Level up
+  const levelUpEl = document.getElementById('rpgLevelUp');
+  if (levelUpEl) {
+    if (hasLevelUp) {
+      levelUpEl.style.display = 'block';
+      playLevelUpSound();
+    } else {
+      levelUpEl.style.display = 'none';
+    }
+  }
+
+  // Road progress
+  const roadEl = document.getElementById('rpgRoad');
+  if (roadEl) {
+    const avgProgress = DIM_KEYS.reduce((sum, key) => {
+      const xp = rpg.scores[key] || 0;
+      return sum + getLevel(xp) / (LEVEL_NAMES.length - 1);
+    }, 0) / DIM_KEYS.length;
+    roadEl.style.setProperty('--road-progress', Math.round(avgProgress * 100) + '%');
+  }
+
+  // Screen 3: Advice
+  const adviceEl = document.getElementById('adviceBox');
+  if (adviceEl) {
+    adviceEl.innerHTML = generateAdvice(rpg, tags, ratings);
+  }
+
+  overlay.classList.add('show');
+  const modal = document.getElementById('settlementModal');
+  if (modal) modal.scrollTop = 0;
+}
+
+function generateAdvice(rpg, tags, ratings) {
+  const lines = [];
+  const now = new Date();
+
+  for (const dim of DIM_KEYS) {
+    const lastDate = rpg.lastPractice[dim];
+    if (!lastDate) continue;
+    const daysSince = (now - new Date(lastDate)) / (1000 * 60 * 60 * 24);
+    if (daysSince >= 4 && daysSince <= 5) {
+      lines.push(`⚠️ <span class="advice-highlight">${DIM_LABELS[dim]}</span> 已${Math.floor(daysSince)}天未练，即将衰减！`);
+    } else if (daysSince > 5) {
+      lines.push(`🔻 <span class="advice-highlight">${DIM_LABELS[dim]}</span> 正在衰减中，快安排练习！`);
+    }
+  }
+
+  for (const dim of DIM_KEYS) {
+    const xp = rpg.scores[dim] || 0;
+    const toNext = getXpToNext(xp);
+    if (toNext !== Infinity && toNext <= 200) {
+      const nextName = LEVEL_NAMES[getLevel(xp) + 1];
+      lines.push(`⭐ <span class="advice-highlight">${DIM_LABELS[dim]}</span> 距 ${nextName} 还差 ${toNext} XP！集中突破！`);
+    }
+  }
+
+  if (lines.length === 0) {
+    lines.push('👍 各方面均衡发展，继续保持节奏！');
+  }
+
+  if (!tags || tags.length === 0) {
+    lines.push('💡 下次试试选择练琴标签，可以获得更精准的经验加成哦。');
+  }
+
+  return lines.join('<br>');
+}
+
+function playLevelUpSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    });
+  } catch(e) { /* silent fail */ }
+}
+
+// ============================================================
+// RPG PANEL RENDER
+// ============================================================
+function renderRpgPanel() {
+  let rpg = loadRpgState();
+  rpg = applyDecay(rpg);
+  saveRpgState(rpg);
+
+  const container = document.getElementById('rpgBars');
+  if (!container) return;
+  container.innerHTML = DIM_KEYS.map(key => {
+    const xp = rpg.scores[key] || 0;
+    const level = getLevel(xp);
+    const levelName = LEVEL_NAMES[level];
+    const nextThresh = LEVEL_THRESHOLDS[level + 1] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+    const prevThresh = LEVEL_THRESHOLDS[level];
+    const pct = nextThresh === Infinity ? 100 : Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100);
+    const toNext = getXpToNext(xp);
+
+    return `<div class="rpg-bar-row">
+      <span class="rpg-dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key]}</span>
+      <div class="rpg-bar-wrap">
+        <div class="rpg-bar-fill ${key}" style="width:${pct}%"></div>
+      </div>
+      <span class="rpg-lvl">${levelName}</span>
+      <span class="rpg-xp">${toNext === Infinity ? 'MAX' : toNext + '→'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// CHARACTER CREATION
+// ============================================================
+const CHAR_PROMPT = `你是一位爵士贝斯教学评估专家。请根据以下学生的自我描述，评估其在六个维度的初始经验值。
+
+六个维度及说明：
+1. 技术基本功 (technique) — 左右手技巧、音色控制、手指灵活度
+2. 节奏/时值感 (rhythm) — 节拍稳定性、Swing感、律动
+3. 听力/耳力 (ear) — 扒谱能力、音程辨认、和弦听辨
+4. 和声/乐理 (harmony) — 和弦进行理解、音阶运用、乐理知识
+5. 即兴/创造力 (improvisation) — Walking Bass编配、Solo能力、乐句构建
+6. 曲库/实战 (repertoire) — 已掌握曲目数量、合奏经验
+
+我的背景：
+[请在这里填写：学琴多久、有无其他乐器基础、每天练习时长、已掌握的曲目、自认为的强项和弱项等。描述越详细，评估越准确。]
+
+请你只输出一个 JSON 对象，不要包含任何解释文字，格式如下：
+{
+  "technique": 数字,
+  "rhythm": 数字,
+  "ear": 数字,
+  "harmony": 数字,
+  "improvisation": 数字,
+  "repertoire": 数字
+}
+
+XP 参考范围：完全新手每项0-50，学过基础50-200，有经验200-500，半专业500-1000。根据描述合理评估，无需过于保守。`;
+
+const CHAR_DIM_MAP = {
+  technique: 'tech', rhythm: 'rhythm', ear: 'ear',
+  harmony: 'harmony', improvisation: 'improv', repertoire: 'repertoire'
+};
+
+const CHAR_DIM_LABELS = {
+  technique: '技术基本功', rhythm: '节奏/时值感', ear: '听力',
+  harmony: '和声/乐理', improvisation: '即兴/创造力', repertoire: '曲库/实战'
+};
+
+const CHAR_DIM_EMOJI = {
+  technique: '🔧', rhythm: '⏱️', ear: '👂',
+  harmony: '📚', improvisation: '🎵', repertoire: '🎤'
+};
+
+function isRpgInitialized() {
+  return localStorage.getItem('bass_rpg_initialized') === 'true';
+}
+
+function showCharCreation() {
+  document.getElementById('charCreationOverlay').classList.add('show');
+  document.getElementById('promptTemplate').textContent = CHAR_PROMPT;
+  renderCharSliders();
+}
+
+function hideCharCreation() {
+  document.getElementById('charCreationOverlay').classList.remove('show');
+}
+
+function renderCharSliders() {
+  const container = document.getElementById('charSliders');
+  if (!container) return;
+  const keys = Object.keys(CHAR_DIM_MAP);
+  container.innerHTML = keys.map(key => {
+    return `<div class="char-slider-row">
+      <span class="slider-label">${CHAR_DIM_EMOJI[key]} ${CHAR_DIM_LABELS[key]}</span>
+      <input type="range" min="0" max="500" value="50" data-dim="${key}">
+      <span class="slider-val">50</span>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('input[type="range"]').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      e.target.nextElementSibling.textContent = e.target.value;
+    });
+  });
+}
+
+function importJsonScore() {
+  const textarea = document.getElementById('charJsonInput');
+  const errorEl = document.getElementById('charJsonError');
+  const raw = textarea.value.trim();
+  errorEl.classList.remove('show');
+
+  if (!raw) {
+    errorEl.textContent = '请先粘贴 DeepSeek 返回的 JSON';
+    errorEl.classList.add('show');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    errorEl.textContent = 'JSON 格式无效，请检查是否完整复制了 DeepSeek 的回复';
+    errorEl.classList.add('show');
+    return;
+  }
+
+  // Validate all 6 keys are present and numeric
+  const requiredKeys = Object.keys(CHAR_DIM_MAP);
+  for (const key of requiredKeys) {
+    if (!(key in parsed) || typeof parsed[key] !== 'number' || isNaN(parsed[key])) {
+      errorEl.textContent = `缺少或无效的字段：${key}。请确认 DeepSeek 返回了完整的 6 个数值。`;
+      errorEl.classList.add('show');
+      return;
+    }
+  }
+
+  // Write to localStorage
+  const scores = {};
+  const now = new Date().toISOString();
+  for (const [jsonKey, dimKey] of Object.entries(CHAR_DIM_MAP)) {
+    scores[dimKey] = Math.max(0, Math.round(parsed[jsonKey]));
+  }
+
+  localStorage.setItem('bass_rpg_initialized', 'true');
+  localStorage.setItem(STORAGE_RPG, JSON.stringify({
+    scores,
+    lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
+    history: [{
+      date: new Date().toISOString().slice(0, 10),
+      tags: ['init'],
+      ratings: {},
+      xpGained: {},
+      time: 0,
+      mood: '',
+      note: '角色创建 — AI评估导入'
+    }],
+    createdAt: now
+  }));
+
+  hideCharCreation();
+  renderCalendar();
+  renderRpgPanel();
+}
+
+function confirmManualScores() {
+  const sliders = document.querySelectorAll('#charSliders input[type="range"]');
+  const scores = {};
+  for (const slider of sliders) {
+    const dimKey = CHAR_DIM_MAP[slider.dataset.dim];
+    scores[dimKey] = parseInt(slider.value);
+  }
+
+  const now = new Date().toISOString();
+  localStorage.setItem('bass_rpg_initialized', 'true');
+  localStorage.setItem(STORAGE_RPG, JSON.stringify({
+    scores,
+    lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
+    history: [{
+      date: new Date().toISOString().slice(0, 10),
+      tags: ['init'],
+      ratings: {},
+      xpGained: {},
+      time: 0,
+      mood: '',
+      note: '角色创建 — 手动设置'
+    }],
+    createdAt: now
+  }));
+
+  hideCharCreation();
+  renderCalendar();
+  renderRpgPanel();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  // --- Character creation events (always bind regardless of init state) ---
+  const btnCopy = document.getElementById('btnCopyPrompt');
+  if (btnCopy) btnCopy.addEventListener('click', () => {
+    navigator.clipboard.writeText(CHAR_PROMPT).then(() => {
+      btnCopy.textContent = '✅ 已复制!';
+      setTimeout(() => { btnCopy.textContent = '📋 一键复制'; }, 2000);
+    }).catch(() => {
+      // Fallback: select text
+      const ta = document.createElement('textarea');
+      ta.value = CHAR_PROMPT;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btnCopy.textContent = '✅ 已复制!';
+      setTimeout(() => { btnCopy.textContent = '📋 一键复制'; }, 2000);
+    });
+  });
+
+  const btnImport = document.getElementById('btnImportJson');
+  if (btnImport) btnImport.addEventListener('click', importJsonScore);
+
+  const btnManual = document.getElementById('btnManualConfirm');
+  if (btnManual) btnManual.addEventListener('click', confirmManualScores);
+
+  // Tab switching
+  document.querySelectorAll('.char-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.char-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.char-tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const targetId = 'charTab' + (tab.dataset.tab === 'ai' ? 'AI' : 'Manual');
+      document.getElementById(targetId).classList.add('active');
+    });
+  });
+
+  // Character creation gate
+  if (!isRpgInitialized()) {
+    showCharCreation();
+    renderPlan();
+    return;
+  }
+
+  renderCalendar();
+  renderPlan();
+  renderStats();
+  updateStreak();
+
+  // --- Metronome ---
+  document.getElementById('btnMetroStart').addEventListener('click', () => {
+    if (metroState.running) stopMetronome();
+    else startMetronome();
+  });
+
+  document.getElementById('btnTapTempo').addEventListener('click', handleTapTempo);
+
+  document.getElementById('metroBpmSlider').addEventListener('input', (e) => {
+    updateBpm(parseInt(e.target.value));
+  });
+
+  document.getElementById('btnBpmMinus').addEventListener('click', () => {
+    updateBpm(metroState.bpm - 1);
+  });
+
+  document.getElementById('btnBpmPlus').addEventListener('click', () => {
+    updateBpm(metroState.bpm + 1);
+  });
+
+  document.querySelectorAll('#subdivGroup .metro-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#subdivGroup .metro-opt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      metroState.subdiv = parseInt(btn.dataset.subdiv);
+      if (metroState.running) {
+        clearInterval(metroState.intervalId);
+        metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+      }
+    });
+  });
+
+  document.querySelectorAll('#accentGroup .metro-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#accentGroup .metro-opt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      metroState.accent = btn.dataset.accent;
+    });
+  });
+
+  document.getElementById('chkSound').addEventListener('change', (e) => {
+    metroState.soundOn = e.target.checked;
+  });
+
+  document.getElementById('chkVisual').addEventListener('change', (e) => {
+    metroState.visualOn = e.target.checked;
+  });
+
+  // 键盘空格控制节拍器
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      if (metroState.running) stopMetronome();
+      else startMetronome();
+    }
+  });
+
+  // --- Settlement ---
+  const btnCloseSettlement = document.getElementById('btnCloseSettlement');
+  if (btnCloseSettlement) {
+    btnCloseSettlement.addEventListener('click', () => {
+      document.getElementById('settlementOverlay').classList.remove('show');
+    });
+  }
+  const settlementOverlay = document.getElementById('settlementOverlay');
+  if (settlementOverlay) {
+    settlementOverlay.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) settlementOverlay.classList.remove('show');
+    });
+  }
+
+  // --- Reference Table ---
+  function openRefTable() {
+    renderRefTable();
+    document.getElementById('refTableOverlay').classList.add('show');
+  }
+  const btnRefTable = document.getElementById('btnRefTable');
+  if (btnRefTable) btnRefTable.addEventListener('click', openRefTable);
+  const btnRefTable2 = document.getElementById('btnRefTable2');
+  if (btnRefTable2) btnRefTable2.addEventListener('click', openRefTable);
+  const btnCloseRefTable = document.getElementById('btnCloseRefTable');
+  if (btnCloseRefTable) {
+    btnCloseRefTable.addEventListener('click', () => {
+      document.getElementById('refTableOverlay').classList.remove('show');
+    });
+  }
+  const refTableOverlay = document.getElementById('refTableOverlay');
+  if (refTableOverlay) {
+    refTableOverlay.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) refTableOverlay.classList.remove('show');
+    });
+  }
+
+  const btnRefTable3 = document.getElementById('btnRefTable3');
+  if (btnRefTable3) {
+    btnRefTable3.addEventListener('click', () => {
+      renderRefTable();
+      document.getElementById('refTableOverlay').classList.add('show');
+    });
+  }
+}
+
+init();
+</script>
+</body>
+</html>
