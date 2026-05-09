@@ -199,6 +199,8 @@
     z-index: 100;
     justify-content: center;
     align-items: center;
+    overflow-y: auto;
+    padding: 20px;
   }
   .modal-overlay.show { display: flex; }
 
@@ -1767,73 +1769,40 @@ function renderTagSelector(existingTags) {
 function renderTimeDistribution(existingDist) {
   const container = document.getElementById('selfRatingGrid');
   if (!container) return;
-  // Default: even split
   const dist = existingDist || {};
   const defaultPct = Math.floor(100 / DIM_KEYS.length);
   const vals = DIM_KEYS.map(k => dist[k] != null ? dist[k] : defaultPct);
-
-  // Normalize to 100%
-  const sum = vals.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < vals.length; i++) {
-    vals[i] = Math.round(vals[i] / sum * 100);
-  }
-  // Fix rounding errors on last element
+  // Normalize
+  const sum = vals.reduce((a, b) => a + b, 0) || 1;
+  for (let i = 0; i < vals.length; i++) vals[i] = Math.round(vals[i] / sum * 100);
   const adj = 100 - vals.reduce((a, b) => a + b, 0);
   vals[vals.length - 1] += adj;
 
-  container.innerHTML = DIM_KEYS.map((key, idx) => {
-    const pct = vals[idx];
-    return `<div class="rating-row">
-      <span class="dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0,4)}</span>
-      <input type="range" min="0" max="100" value="${pct}" data-dim="${key}" data-idx="${idx}">
-      <span class="rating-val">${pct}%</span>
-    </div>`;
-  }).join('');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:0.65em;color:var(--text2);font-family:var(--font-ui);">总计：</span>
+      <span id="distTotal" style="font-family:var(--font-pixel);font-size:0.75em;color:var(--green);">100%</span>
+    </div>
+    ${DIM_KEYS.map((key, idx) => {
+      const pct = vals[idx];
+      return `<div class="rating-row">
+        <span class="dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0,4)}</span>
+        <input type="number" min="0" max="100" value="${pct}" data-dim="${key}" style="width:58px;text-align:center;font-family:var(--font-ui);font-size:0.75em;background:var(--pixel-dark);border:2px solid var(--border);color:var(--text);padding:4px;">
+        <span class="rating-val" style="min-width:28px;">%</span>
+      </div>`;
+    }).join('')}
+  `;
 
-  // Track pre-drag values for redistribution
-  let snapVals = [];
-  container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
-
-  container.querySelectorAll('input[type="range"]').forEach(slider => {
-    slider.addEventListener('mousedown', () => {
-      // Snapshot current state at drag start
-      snapVals = [];
-      container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
-    });
-    slider.addEventListener('touchstart', () => {
-      snapVals = [];
-      container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
-    });
-
-    slider.addEventListener('input', (e) => {
-      const idx = parseInt(e.target.dataset.idx);
-      const newVal = parseInt(e.target.value);
-      const oldVal = snapVals[idx];
-      const delta = newVal - oldVal;
-      if (delta === 0) return;
-
-      // Redistribute delta among other 5 proportionally
-      const otherTotal = 100 - oldVal;
-      if (otherTotal <= 0) {
-        for (let i = 0; i < snapVals.length; i++) {
-          snapVals[i] = i === idx ? 100 : 0;
-        }
-      } else {
-        snapVals[idx] = newVal;
-        for (let i = 0; i < snapVals.length; i++) {
-          if (i === idx) continue;
-          const share = snapVals[i] / otherTotal;
-          snapVals[i] = Math.max(0, Math.round(snapVals[i] - delta * share));
-        }
-        const adj = 100 - snapVals.reduce((a, b) => a + b, 0);
-        snapVals[snapVals.length - 1 - (idx === snapVals.length - 1 ? 1 : 0)] += adj;
+  // Update total display on input change
+  container.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', () => {
+      let total = 0;
+      container.querySelectorAll('input[type="number"]').forEach(s => total += parseInt(s.value) || 0);
+      const totalEl = document.getElementById('distTotal');
+      if (totalEl) {
+        totalEl.textContent = total + '%';
+        totalEl.style.color = total === 100 ? 'var(--green)' : 'var(--red)';
       }
-
-      // Update all sliders and labels
-      container.querySelectorAll('input[type="range"]').forEach((s, i) => {
-        s.value = snapVals[i];
-        s.nextElementSibling.textContent = snapVals[i] + '%';
-      });
     });
   });
 }
@@ -1891,10 +1860,18 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const tagChips = document.querySelectorAll('#tagSelector .tag-chip.selected');
   tagChips.forEach(c => tags.push(c.dataset.tag));
 
-  // Collect time distribution
+  // Collect time distribution (normalize to 100%)
   const timeDistribution = {};
-  const distSliders = document.querySelectorAll('#selfRatingGrid input[type="range"]');
-  distSliders.forEach(s => { timeDistribution[s.dataset.dim] = parseInt(s.value); });
+  const distInputs = document.querySelectorAll('#selfRatingGrid input[type="number"]');
+  let distTotal = 0;
+  distInputs.forEach(s => { const v = parseInt(s.value) || 0; timeDistribution[s.dataset.dim] = v; distTotal += v; });
+  if (distTotal > 0 && distTotal !== 100) {
+    for (const dim of DIM_KEYS) {
+      timeDistribution[dim] = Math.round((timeDistribution[dim] || 0) / distTotal * 100);
+    }
+    const adj = 100 - Object.values(timeDistribution).reduce((a, b) => a + b, 0);
+    timeDistribution[DIM_KEYS[DIM_KEYS.length - 1]] += adj;
+  }
 
   // Mood multiplier
   const moodMult = { '😄': 1.05, '🙂': 1.02, '😐': 1.0, '😤': 1.0, '😢': 1.0 }[mood] || 1.0;
