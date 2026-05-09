@@ -928,6 +928,16 @@
   width: 100%;
   text-align: center;
 }
+@media (max-width: 768px) {
+  .char-creation-modal {
+    padding: 20px 14px;
+    border-width: 3px;
+  }
+  .char-creation-modal h2 { font-size: 0.7em; }
+  .char-creation-modal .subtitle { font-size: 0.55em; }
+  .char-slider-row { font-size: 0.65em; gap: 6px; }
+  .prompt-template { font-size: 0.55em; max-height: 140px; }
+}
 .char-creation-modal h2 {
   font-size: 0.9em;
   color: var(--accent);
@@ -3193,7 +3203,20 @@ const CHAR_PROMPT = `你是一位贝斯教学评估专家。请根据以下学�
 6. 曲库/实战 (repertoire) — 已掌握曲目数量、合奏经验
 
 我的背景：
-[请在这里填写：学琴多久、有无其他乐器基础、每天练习时长、已掌握的曲目、自认为的强项和弱项等。描述越详细，评估越准确。]
+学琴多久：
+有无其他乐器基础：
+每天练习时长：
+已掌握的曲目：
+自认为的强项：
+自认为的弱项：
+
+六维自测（请填 1-10 分，帮助 AI 更准确评估）：
+1. 技术基本功 ___/10（左右手技巧、音色控制、手指灵活度）
+2. 节奏/时值感 ___/10（节拍稳定性、律动感）
+3. 听力/耳力 ___/10（扒谱能力、听辨和弦）
+4. 和声/乐理 ___/10（和弦理解、音阶运用）
+5. 即兴/创造力 ___/10（Walking Bass、Solo能力）
+6. 曲库/实战 ___/10（已掌握曲目、合奏经验）
 
 请你只输出一个 JSON 对象，不要包含任何解释文字，格式如下：
 {
