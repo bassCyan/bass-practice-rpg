@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>爵士贝斯练琴助手</title>
+<title>贝斯练琴助手</title>
 <style>
   :root {
     --bg: #1a1a2e;
@@ -93,6 +93,25 @@
   }
   .streak-num { font-size: 2em; font-weight: 800; color: var(--accent); }
   .streak-label { font-size: 0.8em; color: var(--text2); margin-top: 2px; }
+
+  .data-io-btns {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    justify-content: center;
+  }
+  .btn-data-io {
+    font-size: 0.6em !important;
+    padding: 4px 10px !important;
+    min-width: 0;
+  }
+  .data-size {
+    font-size: 0.55em;
+    color: var(--text2);
+    margin-top: 6px;
+    opacity: 0.6;
+    font-family: var(--font-ui);
+  }
 
   /* ===== Main ===== */
   .main {
@@ -1031,15 +1050,15 @@
 
 <!-- ===== SIDEBAR ===== -->
 <nav class="sidebar">
-  <div class="logo">🎸 爵士贝斯<span>助手</span></div>
-  <div class="nav-item active" data-page="calendar">
+  <div class="logo">🎸 贝斯练琴<span>助手</span></div>
+  <div class="nav-item active" data-page="stats">
+    <span class="nav-icon">📊</span> 练琴统计
+  </div>
+  <div class="nav-item" data-page="calendar">
     <span class="nav-icon">📅</span> 日历打卡
   </div>
   <div class="nav-item" data-page="plan">
     <span class="nav-icon">📖</span> 练琴计划
-  </div>
-  <div class="nav-item" data-page="stats">
-    <span class="nav-icon">📊</span> 练琴统计
   </div>
   <div class="nav-item" data-page="metronome">
     <span class="nav-icon">⏱️</span> 节拍器
@@ -1047,14 +1066,52 @@
   <div class="streak-box">
     <div class="streak-num" id="streakCount">0</div>
     <div class="streak-label">🔥 连续打卡天数</div>
+    <div class="data-io-btns">
+      <button class="btn btn-ghost btn-sm btn-data-io" id="btnExport">📤 导出</button>
+      <button class="btn btn-ghost btn-sm btn-data-io" id="btnImport">📥 导入</button>
+    </div>
+    <div class="data-size" id="dataSize">--</div>
   </div>
 </nav>
 
 <!-- ===== MAIN ===== -->
 <div class="main">
 
+  <!-- STATS PAGE -->
+  <div class="page active" id="page-stats">
+    <h2>📊 练琴统计</h2>
+    <div class="rpg-panel" id="rpgPanel">
+      <h3 style="margin-top:0;">🎮 贝斯手属性面板</h3>
+      <div class="rpg-bars" id="rpgBars"></div>
+      <div style="text-align:right;margin-top:6px;">
+        <button class="btn btn-ghost btn-sm" id="btnReEvaluate">🔄 重新评估</button>
+        <button class="btn btn-ghost btn-sm" id="btnRefTable3">📋 参照表</button>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="statTotalDays">0</div>
+        <div class="stat-label">本月打卡天数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statTotalMin">0</div>
+        <div class="stat-label">本月总练琴时长（分钟）</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statAvgMin">0</div>
+        <div class="stat-label">平均每次练琴时长</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statBestStreak">0</div>
+        <div class="stat-label">历史最长连续天数</div>
+      </div>
+    </div>
+    <h3>本月心情分布</h3>
+    <div id="moodChart"></div>
+  </div>
+
   <!-- CALENDAR PAGE -->
-  <div class="page active" id="page-calendar">
+  <div class="page" id="page-calendar">
     <h2>📅 练琴日历</h2>
     <div class="cal-header">
       <button class="cal-nav-btn" id="btnPrevMonth">◀ 上月</button>
@@ -1082,38 +1139,6 @@
   <div class="page" id="page-plan">
     <h2>📖 练琴计划</h2>
     <div id="planSections"></div>
-  </div>
-
-  <!-- STATS PAGE -->
-  <div class="page" id="page-stats">
-    <h2>📊 练琴统计</h2>
-    <div class="rpg-panel" id="rpgPanel">
-      <h3 style="margin-top:0;">🎮 贝斯手属性面板</h3>
-      <div class="rpg-bars" id="rpgBars"></div>
-      <div style="text-align:right;margin-top:6px;">
-        <button class="btn btn-ghost btn-sm" id="btnRefTable3">📋 参照表</button>
-      </div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-num" id="statTotalDays">0</div>
-        <div class="stat-label">本月打卡天数</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statTotalMin">0</div>
-        <div class="stat-label">本月总练琴时长（分钟）</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statAvgMin">0</div>
-        <div class="stat-label">平均每次练琴时长</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statBestStreak">0</div>
-        <div class="stat-label">历史最长连续天数</div>
-      </div>
-    </div>
-    <h3>本月心情分布</h3>
-    <div id="moodChart"></div>
   </div>
 
   <!-- METRONOME PAGE -->
@@ -1176,7 +1201,7 @@
 
 <!-- SETTLEMENT MODAL -->
 <!-- CHARACTER CREATION OVERLAY -->
-<div class="char-creation-overlay show" id="charCreationOverlay">
+<div class="char-creation-overlay" id="charCreationOverlay">
   <div class="char-creation-modal">
     <h2>🎵 创建你的爵士乐手角色</h2>
     <p class="subtitle">让 AI 根据你的真实水平给出初始经验值</p>
@@ -1202,11 +1227,19 @@
       <div class="char-sliders" id="charSliders"></div>
       <button class="btn btn-primary" id="btnManualConfirm">✅ 确认</button>
     </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);">
+      <p style="font-size:0.6em;color:var(--text2);margin-bottom:8px;font-family:var(--font-ui);">不想评估？直接开始</p>
+      <button class="btn btn-ghost btn-sm" id="btnQuickStart">⚡ 快速开始（默认新手值）</button>
+    </div>
   </div>
 </div>
 
 <!-- FOOTER -->
-<footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器</footer>
+<footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器<br>
+<span style="opacity:0.5;">💡 浏览器数据默认在 C 盘用户目录，建议将浏览器用户数据目录迁移至其他盘（Chrome: 设置→高级→用户数据目录；或使用符号链接）</span></footer>
+
+<input type="file" id="fileImport" accept=".json" style="display:none;">
 
 <div class="modal-overlay" id="settlementOverlay">
   <div class="modal settlement-modal" id="settlementModal">
@@ -1453,6 +1486,7 @@ function applyDecay(rpg) {
 let currentYear, currentMonth;
 let selectedDate = null;
 let editingDate = null;
+let reEvaluateMode = false;
 const now = new Date();
 currentYear = now.getFullYear();
 currentMonth = now.getMonth() + 1; // 1-based
@@ -1719,6 +1753,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
   if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
 
   saveRpgState(rpg);
+  updateDataSize();
 
   // Save original checkin data (extended with tags/ratings/xpGained)
   setCheckin(dateStr, { time, content, mood, tags, ratings, xpGained, updatedAt: new Date().toISOString() });
@@ -2561,7 +2596,7 @@ function renderRpgPanel() {
 // ============================================================
 // CHARACTER CREATION
 // ============================================================
-const CHAR_PROMPT = `你是一位爵士贝斯教学评估专家。请根据以下学生的自我描述，评估其在六个维度的初始经验值。
+const CHAR_PROMPT = `你是一位贝斯教学评估专家。请根据以下学生的自我描述，评估其在六个维度的初始经验值。
 
 六个维度及说明：
 1. 技术基本功 (technique) — 左右手技巧、音色控制、手指灵活度
@@ -2601,18 +2636,111 @@ const CHAR_DIM_EMOJI = {
   harmony: '📚', improvisation: '🎵', repertoire: '🎤'
 };
 
+// ============================================================
+// DATA EXPORT / IMPORT
+// ============================================================
+function calcDataSize() {
+  let bytes = 0;
+  const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
+  for (const key of keys) {
+    const val = localStorage.getItem(key);
+    if (val !== null) bytes += new Blob([val]).size;
+  }
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function updateDataSize() {
+  const el = document.getElementById('dataSize');
+  if (!el) return;
+  el.textContent = '💾 ' + calcDataSize();
+}
+
+function exportAllData() {
+  const exportObj = {};
+  const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
+  for (const key of keys) {
+    const val = localStorage.getItem(key);
+    if (val !== null) exportObj[key] = val;
+  }
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const now = new Date();
+  const ds = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  a.download = `bass-rpg-backup-${ds}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importAllData(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
+      let restored = 0;
+      for (const key of keys) {
+        if (imported[key] !== undefined) {
+          localStorage.setItem(key, imported[key]);
+          restored++;
+        }
+      }
+      if (restored > 0) {
+        alert(`✅ 数据恢复成功！已还原 ${restored} 项数据。\n\n页面将刷新以加载数据。`);
+        location.reload();
+      } else {
+        alert('❌ 文件中未找到有效数据。请确认导入的是正确的备份文件。');
+      }
+    } catch (err) {
+      alert('❌ 文件解析失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function isRpgInitialized() {
   return localStorage.getItem('bass_rpg_initialized') === 'true';
+}
+
+function reEvaluate() {
+  if (!confirm('⚠️ 重新评估会用 AI 重新打分，你的经验值可能降低！\n\n如果 AI 对你的描述理解不同，或你觉得进步没被准确反映，分数可能比现在更少。\n\n确定要继续吗？')) return;
+  reEvaluateMode = true;
+  showCharCreation();
 }
 
 function showCharCreation() {
   document.getElementById('charCreationOverlay').classList.add('show');
   document.getElementById('promptTemplate').textContent = CHAR_PROMPT;
   renderCharSliders();
+
+  if (reEvaluateMode) {
+    document.querySelector('.char-creation-modal h2').textContent = '🔄 重新评估你的水平';
+    document.querySelector('.char-creation-modal .subtitle').textContent = 'AI 将根据你的描述重新打分（可能比当前分数低）';
+    // Hide manual tab and quick start, force AI tab
+    document.querySelector('.char-tab[data-tab="manual"]').style.display = 'none';
+    document.querySelector('.char-tab[data-tab="ai"]').classList.add('active');
+    document.getElementById('charTabAI').classList.add('active');
+    document.getElementById('charTabManual').classList.remove('active');
+    document.getElementById('btnQuickStart').parentElement.style.display = 'none';
+    // Clear previous JSON input
+    document.getElementById('charJsonInput').value = '';
+    document.getElementById('charJsonError').classList.remove('show');
+  } else {
+    document.querySelector('.char-creation-modal h2').textContent = '🎵 创建你的爵士乐手角色';
+    document.querySelector('.char-creation-modal .subtitle').textContent = '让 AI 根据你的真实水平给出初始经验值';
+    document.querySelector('.char-tab[data-tab="manual"]').style.display = '';
+    document.getElementById('btnQuickStart').parentElement.style.display = '';
+  }
 }
 
 function hideCharCreation() {
   document.getElementById('charCreationOverlay').classList.remove('show');
+  reEvaluateMode = false;
 }
 
 function renderCharSliders() {
@@ -2664,32 +2792,56 @@ function importJsonScore() {
     }
   }
 
-  // Write to localStorage
+  // Build scores from parsed JSON
   const scores = {};
-  const now = new Date().toISOString();
   for (const [jsonKey, dimKey] of Object.entries(CHAR_DIM_MAP)) {
     scores[dimKey] = Math.max(0, Math.round(parsed[jsonKey]));
   }
 
-  localStorage.setItem('bass_rpg_initialized', 'true');
-  localStorage.setItem(STORAGE_RPG, JSON.stringify({
-    scores,
-    lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
-    history: [{
+  if (reEvaluateMode) {
+    // Re-evaluation: preserve existing history, lastPractice, createdAt
+    const existingRpg = loadRpgState();
+    const existingInit = JSON.parse(localStorage.getItem('bass_rpg_initialized') || 'false');
+    existingRpg.scores = scores;
+    existingRpg.history.push({
       date: new Date().toISOString().slice(0, 10),
-      tags: ['init'],
+      tags: ['reeval'],
       ratings: {},
       xpGained: {},
       time: 0,
       mood: '',
-      note: '角色创建 — AI评估导入'
-    }],
-    createdAt: now
-  }));
+      note: '重新评估 — AI评估导入'
+    });
+    if (existingRpg.history.length > 365) existingRpg.history = existingRpg.history.slice(-365);
+    saveRpgState(existingRpg);
+    if (!existingInit) localStorage.setItem('bass_rpg_initialized', 'true');
+  } else {
+    // Initial creation
+    const now = new Date().toISOString();
+    localStorage.setItem('bass_rpg_initialized', 'true');
+    localStorage.setItem(STORAGE_RPG, JSON.stringify({
+      scores,
+      lastPractice: { tech: null, rhythm: null, ear: null, harmony: null, improv: null, repertoire: null },
+      history: [{
+        date: new Date().toISOString().slice(0, 10),
+        tags: ['init'],
+        ratings: {},
+        xpGained: {},
+        time: 0,
+        mood: '',
+        note: '角色创建 — AI评估导入'
+      }],
+      createdAt: now
+    }));
+  }
 
   hideCharCreation();
   renderCalendar();
+  renderPlan();
+  renderStats();
   renderRpgPanel();
+  updateStreak();
+  updateDataSize();
 }
 
 function confirmManualScores() {
@@ -2699,7 +2851,18 @@ function confirmManualScores() {
     const dimKey = CHAR_DIM_MAP[slider.dataset.dim];
     scores[dimKey] = parseInt(slider.value);
   }
+  finalizeCharCreation(scores, '角色创建 — 手动设置');
+}
 
+function quickStart() {
+  const scores = {};
+  for (const key of Object.keys(CHAR_DIM_MAP)) {
+    scores[CHAR_DIM_MAP[key]] = 50;
+  }
+  finalizeCharCreation(scores, '角色创建 — 快速开始');
+}
+
+function finalizeCharCreation(scores, note) {
   const now = new Date().toISOString();
   localStorage.setItem('bass_rpg_initialized', 'true');
   localStorage.setItem(STORAGE_RPG, JSON.stringify({
@@ -2712,14 +2875,18 @@ function confirmManualScores() {
       xpGained: {},
       time: 0,
       mood: '',
-      note: '角色创建 — 手动设置'
+      note
     }],
     createdAt: now
   }));
 
   hideCharCreation();
   renderCalendar();
+  renderPlan();
+  renderStats();
   renderRpgPanel();
+  updateStreak();
+  updateDataSize();
 }
 
 // ============================================================
@@ -2745,11 +2912,14 @@ function init() {
     });
   });
 
-  const btnImport = document.getElementById('btnImportJson');
-  if (btnImport) btnImport.addEventListener('click', importJsonScore);
+  const btnImportJson = document.getElementById('btnImportJson');
+  if (btnImportJson) btnImportJson.addEventListener('click', importJsonScore);
 
   const btnManual = document.getElementById('btnManualConfirm');
   if (btnManual) btnManual.addEventListener('click', confirmManualScores);
+
+  const btnQuickStart = document.getElementById('btnQuickStart');
+  if (btnQuickStart) btnQuickStart.addEventListener('click', quickStart);
 
   // Tab switching
   document.querySelectorAll('.char-tab').forEach(tab => {
@@ -2761,18 +2931,6 @@ function init() {
       document.getElementById(targetId).classList.add('active');
     });
   });
-
-  // Character creation gate
-  if (!isRpgInitialized()) {
-    showCharCreation();
-    renderPlan();
-    return;
-  }
-
-  renderCalendar();
-  renderPlan();
-  renderStats();
-  updateStreak();
 
   // --- Metronome ---
   document.getElementById('btnMetroStart').addEventListener('click', () => {
@@ -2867,12 +3025,45 @@ function init() {
     });
   }
 
+  const btnReEvaluate = document.getElementById('btnReEvaluate');
+  if (btnReEvaluate) btnReEvaluate.addEventListener('click', reEvaluate);
+
   const btnRefTable3 = document.getElementById('btnRefTable3');
   if (btnRefTable3) {
     btnRefTable3.addEventListener('click', () => {
       renderRefTable();
       document.getElementById('refTableOverlay').classList.add('show');
     });
+  }
+
+  // --- Export / Import ---
+  const btnExport = document.getElementById('btnExport');
+  if (btnExport) btnExport.addEventListener('click', exportAllData);
+
+  const btnImport = document.getElementById('btnImport');
+  const fileImport = document.getElementById('fileImport');
+  if (btnImport && fileImport) {
+    btnImport.addEventListener('click', () => fileImport.click());
+    fileImport.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importAllData(e.target.files[0]);
+        fileImport.value = '';
+      }
+    });
+  }
+
+  // Character creation gate — render after all listeners are bound
+  if (!isRpgInitialized()) {
+    showCharCreation();
+    renderStats();
+    renderCalendar();
+    renderPlan();
+  } else {
+    renderStats();
+    renderCalendar();
+    renderPlan();
+    updateStreak();
+    updateDataSize();
   }
 }
 
