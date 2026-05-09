@@ -1296,7 +1296,8 @@
 
 <!-- REFERENCE TABLE MODAL -->
 <div class="modal-overlay" id="refTableOverlay" style="z-index:300;">
-  <div class="modal" style="max-width:640px; max-height:80vh; overflow-y:auto;">
+  <div class="modal" style="max-width:640px; max-height:80vh; overflow-y:auto; position:relative;">
+    <button id="btnCloseRefTableX" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:1.4em;cursor:pointer;line-height:1;" title="关闭">&times;</button>
     <h3 style="margin-bottom:16px;">📋 六维评分参照表</h3>
     <div id="refTableContent"></div>
     <div class="btn-row" style="justify-content:center;margin-top:16px;">
@@ -1784,40 +1785,49 @@ function renderTimeDistribution(existingDist) {
     </div>`;
   }).join('');
 
-  const sliders = container.querySelectorAll('input[type="range"]');
-  sliders.forEach(slider => {
+  // Track pre-drag values for redistribution
+  let snapVals = [];
+  container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
+
+  container.querySelectorAll('input[type="range"]').forEach(slider => {
+    slider.addEventListener('mousedown', () => {
+      // Snapshot current state at drag start
+      snapVals = [];
+      container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
+    });
+    slider.addEventListener('touchstart', () => {
+      snapVals = [];
+      container.querySelectorAll('input[type="range"]').forEach(s => snapVals.push(parseInt(s.value)));
+    });
+
     slider.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.idx);
       const newVal = parseInt(e.target.value);
-      const currentVals = [];
-      container.querySelectorAll('input[type="range"]').forEach(s => currentVals.push(parseInt(s.value)));
-      const oldVal = currentVals[idx];
+      const oldVal = snapVals[idx];
       const delta = newVal - oldVal;
       if (delta === 0) return;
 
       // Redistribute delta among other 5 proportionally
       const otherTotal = 100 - oldVal;
       if (otherTotal <= 0) {
-        // Can't redistribute — reset
-        for (let i = 0; i < currentVals.length; i++) {
-          currentVals[i] = i === idx ? 100 : 0;
+        for (let i = 0; i < snapVals.length; i++) {
+          snapVals[i] = i === idx ? 100 : 0;
         }
       } else {
-        currentVals[idx] = newVal;
-        for (let i = 0; i < currentVals.length; i++) {
+        snapVals[idx] = newVal;
+        for (let i = 0; i < snapVals.length; i++) {
           if (i === idx) continue;
-          const share = otherTotal > 0 ? currentVals[i] / otherTotal : 0;
-          currentVals[i] = Math.max(0, Math.round(currentVals[i] - delta * share));
+          const share = snapVals[i] / otherTotal;
+          snapVals[i] = Math.max(0, Math.round(snapVals[i] - delta * share));
         }
-        // Fix rounding
-        const adj = 100 - currentVals.reduce((a, b) => a + b, 0);
-        currentVals[currentVals.length - 1 - (idx === currentVals.length - 1 ? 1 : 0)] += adj;
+        const adj = 100 - snapVals.reduce((a, b) => a + b, 0);
+        snapVals[snapVals.length - 1 - (idx === snapVals.length - 1 ? 1 : 0)] += adj;
       }
 
       // Update all sliders and labels
       container.querySelectorAll('input[type="range"]').forEach((s, i) => {
-        s.value = currentVals[i];
-        s.nextElementSibling.textContent = currentVals[i] + '%';
+        s.value = snapVals[i];
+        s.nextElementSibling.textContent = snapVals[i] + '%';
       });
     });
   });
@@ -3595,11 +3605,10 @@ function init() {
   const btnRefTable2 = document.getElementById('btnRefTable2');
   if (btnRefTable2) btnRefTable2.addEventListener('click', openRefTable);
   const btnCloseRefTable = document.getElementById('btnCloseRefTable');
-  if (btnCloseRefTable) {
-    btnCloseRefTable.addEventListener('click', () => {
-      document.getElementById('refTableOverlay').classList.remove('show');
-    });
-  }
+  const closeRefFn = () => document.getElementById('refTableOverlay').classList.remove('show');
+  if (btnCloseRefTable) btnCloseRefTable.addEventListener('click', closeRefFn);
+  const btnCloseRefTableX = document.getElementById('btnCloseRefTableX');
+  if (btnCloseRefTableX) btnCloseRefTableX.addEventListener('click', closeRefFn);
   const refTableOverlay = document.getElementById('refTableOverlay');
   if (refTableOverlay) {
     refTableOverlay.addEventListener('click', (e) => {
