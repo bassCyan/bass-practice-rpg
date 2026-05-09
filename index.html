@@ -1081,6 +1081,7 @@
       <button class="btn btn-ghost btn-sm btn-data-io" id="btnImport">📥 导入</button>
     </div>
     <div class="data-size" id="dataSize">--</div>
+    <button class="btn btn-ghost btn-sm btn-data-io" id="btnHelp" style="margin-top:8px;">❓ 分值说明</button>
   </div>
 </nav>
 
@@ -1294,7 +1295,7 @@
 </div>
 
 <!-- REFERENCE TABLE MODAL -->
-<div class="modal-overlay" id="refTableOverlay">
+<div class="modal-overlay" id="refTableOverlay" style="z-index:300;">
   <div class="modal" style="max-width:640px; max-height:80vh; overflow-y:auto;">
     <h3 style="margin-bottom:16px;">📋 六维评分参照表</h3>
     <div id="refTableContent"></div>
@@ -1306,6 +1307,27 @@
 
 </div>
 
+<!-- HELP MODAL -->
+<div class="modal-overlay" id="helpOverlay" style="z-index:300;">
+  <div class="modal" style="max-width:500px;">
+    <h3>📊 分值计算说明</h3>
+    <div style="font-family:var(--font-ui);font-size:0.75em;line-height:1.8;color:var(--text2);">
+      <p>每次练琴打卡获得的经验值由以下公式计算：</p>
+      <p style="color:var(--accent);font-family:monospace;font-size:0.9em;text-align:center;padding:8px 0;">
+        XP = 标签权重 × 练琴时长 × 时间占比 × 心情加成
+      </p>
+      <p><strong>标签权重：</strong>不同练琴类型对不同维度的基础加成不同（如"琶音"侧重技术+和声）</p>
+      <p><strong>练琴时长：</strong>练得越久经验越多（纯练琴时间，玩手机不算噢）</p>
+      <p><strong>时间占比：</strong>你今天在各项维度上分配的时间比例，总和100%</p>
+      <p><strong>心情加成：</strong>😄+5% 🙂+2% 😐😤😢不加成（差心情不扣分）</p>
+      <p style="margin-top:8px;color:var(--text2);">💡 超过5天不练某项维度会开始衰减（每天-2%，不低于当前等级底线）</p>
+    </div>
+    <div class="btn-row" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" id="btnCloseHelp">知道了</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== CHECK-IN MODAL ===== -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -1315,7 +1337,7 @@
       <input type="date" id="inputDate">
     </div>
     <div class="form-group">
-      <label>⏱️ 练琴时长（分钟）</label>
+      <label>⏱️ 练琴时长（分钟） <span style="font-size:0.7em;color:var(--text2);font-weight:400;">— 纯练琴时间，玩手机不算噢</span></label>
       <input type="number" id="inputTime" placeholder="例如：60" min="1" max="600">
     </div>
     <div class="form-group">
@@ -1328,7 +1350,7 @@
       </div>
     </div>
     <div class="form-group">
-      <label>📊 六维自评（1-10分）</label>
+      <label>⏱️ 时间分配（拖动滑块，总和自动锁定100%）</label>
       <div class="self-rating-grid" id="selfRatingGrid">
       </div>
     </div>
@@ -1528,11 +1550,11 @@ function getLevelFloor(xp, branch) {
   return thresholds[getLevel(xp, branch)];
 }
 
-function calcXpGain(baseXP, minutes, currentLevel, selfRating) {
+function calcXpGain(baseXP, minutes, currentLevel, timeShare, moodMult) {
   const timeMult = Math.max(0.1, minutes / 30);
   const decayMult = currentLevel >= 6 ? 0.6 : 1.0;
-  const ratingMult = Math.max(0.2, (selfRating || 5) / 5);
-  return Math.round(baseXP * timeMult * decayMult * ratingMult);
+  const shareMult = Math.max(0.05, timeShare || 0); // minimum 5% if tagged
+  return Math.round(baseXP * timeMult * decayMult * shareMult * (moodMult || 1));
 }
 
 function applyDecay(rpg, branch) {
@@ -1736,21 +1758,67 @@ function renderTagSelector(existingTags) {
   });
 }
 
-function renderSelfRatingGrid(existingRatings) {
+function renderTimeDistribution(existingDist) {
   const container = document.getElementById('selfRatingGrid');
   if (!container) return;
-  container.innerHTML = DIM_KEYS.map(key => {
-    const val = (existingRatings && existingRatings[key]) || 5;
+  // Default: even split
+  const dist = existingDist || {};
+  const defaultPct = Math.floor(100 / DIM_KEYS.length);
+  const vals = DIM_KEYS.map(k => dist[k] != null ? dist[k] : defaultPct);
+
+  // Normalize to 100%
+  const sum = vals.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < vals.length; i++) {
+    vals[i] = Math.round(vals[i] / sum * 100);
+  }
+  // Fix rounding errors on last element
+  const adj = 100 - vals.reduce((a, b) => a + b, 0);
+  vals[vals.length - 1] += adj;
+
+  container.innerHTML = DIM_KEYS.map((key, idx) => {
+    const pct = vals[idx];
     return `<div class="rating-row">
       <span class="dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0,4)}</span>
-      <input type="range" min="1" max="10" value="${val}" data-dim="${key}">
-      <span class="rating-val">${val}</span>
+      <input type="range" min="0" max="100" value="${pct}" data-dim="${key}" data-idx="${idx}">
+      <span class="rating-val">${pct}%</span>
     </div>`;
   }).join('');
-  container.querySelectorAll('input[type="range"]').forEach(slider => {
+
+  const sliders = container.querySelectorAll('input[type="range"]');
+  sliders.forEach(slider => {
     slider.addEventListener('input', (e) => {
-      const val = e.target.value;
-      e.target.nextElementSibling.textContent = val;
+      const idx = parseInt(e.target.dataset.idx);
+      const newVal = parseInt(e.target.value);
+      const currentVals = [];
+      container.querySelectorAll('input[type="range"]').forEach(s => currentVals.push(parseInt(s.value)));
+      const oldVal = currentVals[idx];
+      const delta = newVal - oldVal;
+      if (delta === 0) return;
+
+      // Redistribute delta among other 5 proportionally
+      const otherTotal = 100 - oldVal;
+      if (otherTotal <= 0) {
+        // Can't redistribute — reset
+        for (let i = 0; i < currentVals.length; i++) {
+          currentVals[i] = i === idx ? 100 : 0;
+        }
+      } else {
+        currentVals[idx] = newVal;
+        for (let i = 0; i < currentVals.length; i++) {
+          if (i === idx) continue;
+          const share = otherTotal > 0 ? currentVals[i] / otherTotal : 0;
+          currentVals[i] = Math.max(0, Math.round(currentVals[i] - delta * share));
+        }
+        // Fix rounding
+        const adj = 100 - currentVals.reduce((a, b) => a + b, 0);
+        currentVals[currentVals.length - 1 - (idx === currentVals.length - 1 ? 1 : 0)] += adj;
+      }
+
+      // Update all sliders and labels
+      container.querySelectorAll('input[type="range"]').forEach((s, i) => {
+        s.value = currentVals[i];
+        s.nextElementSibling.textContent = currentVals[i] + '%';
+      });
     });
   });
 }
@@ -1768,9 +1836,9 @@ function openModal(dateStr) {
     if (moodBtn) moodBtn.classList.add('selected');
   }
   const existingTags = existing ? existing.tags : [];
-  const existingRatings = existing ? existing.ratings : null;
+  const existingDist = existing ? existing.timeDistribution : null;
   renderTagSelector(existingTags);
-  renderSelfRatingGrid(existingRatings);
+  renderTimeDistribution(existingDist);
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('inputTime').focus();
 }
@@ -1808,10 +1876,13 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const tagChips = document.querySelectorAll('#tagSelector .tag-chip.selected');
   tagChips.forEach(c => tags.push(c.dataset.tag));
 
-  // Collect self-ratings
-  const ratings = {};
-  const ratingSliders = document.querySelectorAll('#selfRatingGrid input[type="range"]');
-  ratingSliders.forEach(s => { ratings[s.dataset.dim] = parseInt(s.value); });
+  // Collect time distribution
+  const timeDistribution = {};
+  const distSliders = document.querySelectorAll('#selfRatingGrid input[type="range"]');
+  distSliders.forEach(s => { timeDistribution[s.dataset.dim] = parseInt(s.value); });
+
+  // Mood multiplier
+  const moodMult = { '😄': 1.05, '🙂': 1.02, '😐': 1.0, '😤': 1.0, '😢': 1.0 }[mood] || 1.0;
 
   // Calculate XP for all 3 branches
   const xpGainedByBranch = {};
@@ -1825,19 +1896,10 @@ document.getElementById('btnSave').addEventListener('click', () => {
       const weights = BRANCH_TAG_WEIGHTS[branch][tag];
       if (!weights) continue;
       for (const [dim, baseXP] of Object.entries(weights)) {
+        const timeShare = (timeDistribution[dim] || 0) / 100;
         const currentLevel = getLevel(rpg.scores[dim], branch);
-        const gain = calcXpGain(baseXP, time, currentLevel, ratings[dim]);
-        xpGained[dim] = (xpGained[dim] || 0) + gain;
-        rpg.scores[dim] += gain;
-        rpg.lastPractice[dim] = dateStr;
-      }
-    }
-
-    // If no tags selected, self-ratings >= 6 give small base XP
-    if (tags.length === 0) {
-      for (const dim of DIM_KEYS) {
-        if (ratings[dim] && ratings[dim] >= 6) {
-          const gain = calcXpGain(2, time, getLevel(rpg.scores[dim], branch), ratings[dim]);
+        const gain = calcXpGain(baseXP, time, currentLevel, timeShare, moodMult);
+        if (gain > 0) {
           xpGained[dim] = (xpGained[dim] || 0) + gain;
           rpg.scores[dim] += gain;
           rpg.lastPractice[dim] = dateStr;
@@ -1845,7 +1907,20 @@ document.getElementById('btnSave').addEventListener('click', () => {
       }
     }
 
-    rpg.history.push({ date: dateStr, tags, ratings, xpGained, time, mood });
+    // If no tags selected, dims with >10% time share get small base XP
+    if (tags.length === 0) {
+      for (const dim of DIM_KEYS) {
+        const timeShare = (timeDistribution[dim] || 0) / 100;
+        if (timeShare > 0.1) {
+          const gain = calcXpGain(2, time, getLevel(rpg.scores[dim], branch), timeShare, moodMult);
+          xpGained[dim] = (xpGained[dim] || 0) + gain;
+          rpg.scores[dim] += gain;
+          rpg.lastPractice[dim] = dateStr;
+        }
+      }
+    }
+
+    rpg.history.push({ date: dateStr, tags, timeDistribution, xpGained, time, mood, moodMult });
     if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
     saveBranchState(branch, rpg);
     xpGainedByBranch[branch] = xpGained;
@@ -1855,7 +1930,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
   // Save checkin data with per-branch XP
   setCheckin(dateStr, {
-    time, content, mood, tags, ratings,
+    time, content, mood, tags, timeDistribution,
     xpGainedByBranch,
     updatedAt: new Date().toISOString()
   });
@@ -1866,8 +1941,9 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
   // Show settlement screen
   const hasXP = Object.values(xpGainedByBranch).some(g => Object.keys(g).length > 0);
-  if (hasXP || Object.values(ratings).some(r => r >= 6)) {
-    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings);
+  const hasSignificantTime = Object.values(timeDistribution).some(v => v > 10);
+  if (hasXP || hasSignificantTime) {
+    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood);
   }
 });
 
@@ -2904,7 +2980,7 @@ function renderRefTable() {
 // ============================================================
 // SETTLEMENT FUNCTIONS
 // ============================================================
-function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings) {
+function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood) {
   const overlay = document.getElementById('settlementOverlay');
   if (!overlay) return;
 
@@ -2992,7 +3068,7 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings) {
   // Screen 3: Advice (combined across all branches)
   const adviceEl = document.getElementById('adviceBox');
   if (adviceEl) {
-    adviceEl.innerHTML = generateAdvice(rpgByBranch, tags, ratings);
+    adviceEl.innerHTML = generateAdvice(rpgByBranch, tags, mood);
   }
 
   overlay.classList.add('show');
@@ -3000,11 +3076,21 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, ratings) {
   if (modal) modal.scrollTop = 0;
 }
 
-function generateAdvice(rpgByBranch, tags, ratings) {
+function generateAdvice(rpgByBranch, tags, mood) {
   const lines = [];
+
+  // Mood response
+  const moodTexts = {
+    '😄': '🔥 状态火热！今天的手感起飞了，保持这股劲！',
+    '🙂': '😊 稳扎稳打，不错的一天。',
+    '😐': '📋 平淡也是练琴的一部分，坚持就是胜利。',
+    '😤': '💪 烦躁日还能坐下来，已经是胜利。',
+    '😢': '🫂 能坚持打卡就是勇士，会好起来的。'
+  };
+  if (mood && moodTexts[mood]) lines.push(moodTexts[mood]);
+
   const now = new Date();
   const activeBranch = loadMeta().activeBranch || 'jazz';
-  // Priority: check active branch first, then others
   const branchOrder = [activeBranch, ...BRANCH_KEYS.filter(b => b !== activeBranch)];
 
   for (const branch of branchOrder) {
@@ -3030,7 +3116,7 @@ function generateAdvice(rpgByBranch, tags, ratings) {
     }
   }
 
-  if (lines.length === 0) {
+  if (lines.length <= 1) {
     lines.push('👍 各方面均衡发展，继续保持节奏！');
   }
   if (!tags || tags.length === 0) {
@@ -3519,6 +3605,18 @@ function init() {
     refTableOverlay.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) refTableOverlay.classList.remove('show');
     });
+  }
+
+  // Help button
+  const btnHelp = document.getElementById('btnHelp');
+  const helpOverlay = document.getElementById('helpOverlay');
+  if (btnHelp && helpOverlay) {
+    btnHelp.addEventListener('click', () => helpOverlay.classList.add('show'));
+    helpOverlay.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) helpOverlay.classList.remove('show');
+    });
+    const btnCloseHelp = document.getElementById('btnCloseHelp');
+    if (btnCloseHelp) btnCloseHelp.addEventListener('click', () => helpOverlay.classList.remove('show'));
   }
 
   const btnReEvaluate = document.getElementById('btnReEvaluate');
