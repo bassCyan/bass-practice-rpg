@@ -1234,7 +1234,12 @@
 
     <!-- Tab: AI Eval -->
     <div class="char-tab-content active" id="charTabAI">
-      <p class="char-hint">复制下方 Prompt → 粘贴到 <a href="https://chat.deepseek.com" target="_blank">DeepSeek（免费）</a> → 把返回的 JSON 粘贴回来 → 导入</p>
+      <div style="background:rgba(240,176,48,0.1);border:2px solid var(--accent);padding:14px 16px;margin-bottom:14px;font-family:var(--font-ui);font-size:0.72em;line-height:2;">
+        <p style="color:var(--accent);font-weight:700;margin-bottom:6px;">📋 操作步骤（3步）：</p>
+        <p>❶ 点击下方 <strong style="color:var(--accent);">📋 一键复制</strong> 按钮复制 Prompt</p>
+        <p>❷ 粘贴到 <a href="https://chat.deepseek.com" target="_blank" style="color:var(--blue);font-weight:700;">DeepSeek 网页版</a>（免费），告诉它你的学琴背景，它会给你6个数字</p>
+        <p>❸ 把 DeepSeek 返回的 JSON <strong style="color:var(--accent);">完整粘贴到下方文本框</strong>，点导入</p>
+      </div>
       <div class="prompt-template" id="promptTemplate"></div>
       <button class="btn btn-ghost btn-sm copy-btn" id="btnCopyPrompt">📋 一键复制</button>
 
@@ -1250,8 +1255,8 @@
     </div>
 
     <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);">
-      <p style="font-size:0.6em;color:var(--text2);margin-bottom:8px;font-family:var(--font-ui);">不想评估？直接开始</p>
-      <button class="btn btn-ghost btn-sm" id="btnQuickStart">⚡ 快速开始（默认新手值）</button>
+      <p style="font-size:0.65em;color:var(--text2);margin-bottom:8px;font-family:var(--font-ui);">完全零基础？</p>
+      <button class="btn btn-ghost btn-sm" id="btnQuickStart">🌱 从头开始（默认新手值）</button>
     </div>
   </div>
 </div>
@@ -3442,11 +3447,12 @@ function confirmManualScores() {
 }
 
 function quickStart() {
+  if (!confirm('🌱 从头开始：所有维度初始 50 XP（纯新手）。\n\n⚠️ 如果你有一定基础，建议点"取消"，用上方的 AI 评估或手动设置来匹配你的真实水平。\n\n确定要从头开始吗？')) return;
   const scores = {};
   for (const key of Object.keys(CHAR_DIM_MAP)) {
     scores[CHAR_DIM_MAP[key]] = 50;
   }
-  finalizeCharCreation(scores, '快速开始');
+  finalizeCharCreation(scores, '从头开始');
 }
 
 function finalizeCharCreation(scores, note) {
