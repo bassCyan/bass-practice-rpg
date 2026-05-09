@@ -3334,15 +3334,10 @@ function renderCharSliders() {
   container.innerHTML = keys.map(key => {
     return `<div class="char-slider-row">
       <span class="slider-label">${CHAR_DIM_EMOJI[key]} ${CHAR_DIM_LABELS[key]}</span>
-      <input type="range" min="0" max="500" value="50" data-dim="${key}">
-      <span class="slider-val">50</span>
+      <input type="number" min="0" max="500" value="50" data-dim="${key}" style="width:72px;text-align:center;font-family:var(--font-ui);font-size:0.75em;background:var(--pixel-dark);border:2px solid var(--border);color:var(--text);padding:4px;">
+      <span class="slider-val">XP</span>
     </div>`;
   }).join('');
-  container.querySelectorAll('input[type="range"]').forEach(slider => {
-    slider.addEventListener('input', (e) => {
-      e.target.nextElementSibling.textContent = e.target.value;
-    });
-  });
 }
 
 function importJsonScore() {
@@ -3414,11 +3409,11 @@ function importJsonScore() {
 }
 
 function confirmManualScores() {
-  const sliders = document.querySelectorAll('#charSliders input[type="range"]');
+  const inputs = document.querySelectorAll('#charSliders input[type="number"]');
   const scores = {};
-  for (const slider of sliders) {
-    const dimKey = CHAR_DIM_MAP[slider.dataset.dim];
-    scores[dimKey] = parseInt(slider.value);
+  for (const input of inputs) {
+    const dimKey = CHAR_DIM_MAP[input.dataset.dim];
+    scores[dimKey] = parseInt(input.value) || 0;
   }
   finalizeCharCreation(scores, '手动设置');
 }
