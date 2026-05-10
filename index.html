@@ -1314,8 +1314,13 @@
 <!-- REFERENCE TABLE MODAL -->
 <div class="modal-overlay" id="refTableOverlay" style="z-index:300;">
   <div class="modal" style="max-width:640px; max-height:80vh; overflow-y:auto; position:relative;">
-    <button id="btnCloseRefTableX" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:1.4em;cursor:pointer;line-height:1;" title="关闭">&times;</button>
-    <h3 style="margin-bottom:16px;">📋 六维评分参照表</h3>
+    <button id="btnCloseRefTableX" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:1.4em;cursor:pointer;line-height:1;z-index:1;" title="关闭">&times;</button>
+    <h3 style="margin-bottom:12px;">📋 六维评分参照表</h3>
+    <div class="char-tabs" id="refBranchTabs" style="margin-bottom:14px;">
+      <button class="char-tab active" data-branch="jazz">🎺 爵士</button>
+      <button class="char-tab" data-branch="pop">🎸 流行</button>
+      <button class="char-tab" data-branch="neon">🎹 霓虹</button>
+    </div>
     <div id="refTableContent"></div>
     <div class="btn-row" style="justify-content:center;margin-top:16px;">
       <button class="btn btn-primary" id="btnCloseRefTable">关闭</button>
@@ -3000,13 +3005,43 @@ const REFERENCE_TABLE = {
   }
 };
 
-function renderRefTable() {
+// Branch-specific benchmark overrides
+const BRANCH_REF_BENCHMARKS = {
+  jazz: {},
+  pop: {
+    tech: { '初级':'Beatles - Let It Be 贝斯线', '中级':"Bruno Mars - Uptown Funk（Root-5-6-b7律动）", '高级':'Thundercat - Them Changes（Neo-Soul贝斯）' },
+    rhythm: { '初级':"Billie Eilish - bad guy（极简，空间感）", '中级':"Dua Lipa - Don't Start Now（现代Disco贝斯）", '高级':'Vulfpeck - Dean Town（16分驱动，手速+耐力）' },
+    ear: { '初级':"Ed Sheeran - Perfect（I-IV-vi-V万能进行）", '中级':"Daft Punk - Get Lucky（Disco Octave）", '高级':"Dua Lipa - Don't Start Now（复杂Fill扒谱）" },
+    harmony: { '初级':"Taylor Swift - Shake It Off（I-IV-V）", '中级':"Bruno Mars - Leave The Door Open（R&B和声）", '高级':"Stevie Wonder - Sir Duke（转调+复杂和声）" },
+    improv: { '初级':'根音+五度根据和弦进行自由切换', '中级':'在流行歌副歌即兴加Fill和经过音', '高级':'完整即兴编配一首流行歌的贝斯线' },
+    repertoire: { '初级':'5首流行歌完整弹完', '中级':'15首不同风格跟歌弹奏', '高级':'40分钟跟乐队完整演出' }
+  },
+  neon: {
+    tech: { '初级':'YOASOBI - 夜に駆ける（八分驱动）', '中级':"ZUTOMAYO - 秒針を噛む（16分+弦跳）", '高级':'ZUTOMAYO - お勉強しといてよ（Slap+拨片混合）' },
+    rhythm: { '初级':"King Gnu - 白日（情绪起伏节奏跟随）", '中级':"Eve - 廻廻奇譚（快节奏+大量加花）", '高级':'凛として時雨 - abnormalize（7/8+5/4变拍号）' },
+    ear: { '初级':"Official髭男dism - Pretender", '中级':"LiSA - 紅蓮華（Anime Rock）", '高级':'tricot - おちゃんせんすぅす（Math Rock贝斯）' },
+    harmony: { '初级':'J-Pop王道进行 IVM7→V7→iii7→vi7', '中级':'椎名林檎 - 丸の内サディスティック（复杂和声+转调）', '高级':'凛として時雨 - abnormalize（变拍+复杂和声）' },
+    improv: { '初级':'16分网格中安全地即兴加Fill', '中级':'在一段Anime Rock中即兴Solo 16小节', '高级':'混合拨片/Slap/三指即兴演奏' },
+    repertoire: { '初级':'5首Anime Song完整演奏', '中级':'15首J-Pop/J-Rock跟歌弹奏', '高级':'能跟完整一场Anime Song Live Set' }
+  }
+};
+
+function renderRefTable(branch) {
+  const branchKey = branch || 'jazz';
+  // Update tabs
+  document.querySelectorAll('#refBranchTabs .char-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.branch === branchKey);
+  });
+
   const container = document.getElementById('refTableContent');
   if (!container) return;
   let html = '';
   for (const [dimKey, dimData] of Object.entries(REFERENCE_TABLE)) {
     html += `<h3 style="margin-top:16px;color:var(--accent);">${DIM_EMOJI[dimKey]} ${dimData.title}</h3>`;
     for (const [level, data] of Object.entries(dimData.levels)) {
+      const overrides = BRANCH_REF_BENCHMARKS[branchKey] || {};
+      const dimOverrides = overrides[dimKey] || {};
+      const benchmark = dimOverrides[level] || data.benchmark;
       html += `<div class="plan-section" style="margin-bottom:6px;">
         <div class="plan-section-header" style="padding:10px 14px;">
           <span style="font-size:0.8em;">【${level}】${data.standard.slice(0, 40)}...</span>
@@ -3014,7 +3049,7 @@ function renderRefTable() {
         </div>
         <div class="plan-section-body">
           <p><strong>可验证标准：</strong>${data.anchor}</p>
-          <p><strong>标杆参照：</strong>${data.benchmark}</p>
+          <p><strong>标杆参照：</strong>${benchmark}</p>
         </div>
       </div>`;
     }
@@ -3644,7 +3679,8 @@ function init() {
 
   // --- Reference Table ---
   function openRefTable() {
-    renderRefTable();
+    const branch = loadMeta().activeBranch || 'jazz';
+    renderRefTable(branch);
     document.getElementById('refTableOverlay').classList.add('show');
   }
   const btnRefTable = document.getElementById('btnRefTable');
@@ -3697,10 +3733,17 @@ function init() {
     });
   });
 
+  // Branch tabs on reference table
+  document.querySelectorAll('#refBranchTabs .char-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      renderRefTable(tab.dataset.branch);
+    });
+  });
+
   const btnRefTable3 = document.getElementById('btnRefTable3');
   if (btnRefTable3) {
     btnRefTable3.addEventListener('click', () => {
-      renderRefTable();
+      renderRefTable(loadMeta().activeBranch || 'jazz');
       document.getElementById('refTableOverlay').classList.add('show');
     });
   }
