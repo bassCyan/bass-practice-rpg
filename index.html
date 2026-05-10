@@ -242,16 +242,16 @@
   }
   .form-group textarea { min-height: 80px; }
 
-  .mood-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mood-selector { display: flex; gap: 6px; flex-direction: column; }
   .mood-btn {
-    font-size: 1.6em;
-    padding: 6px 10px;
-    border-radius: 8px;
+    font-size: 1.4em;
+    padding: 8px 12px;
     cursor: pointer;
     background: var(--bg);
     border: 2px solid transparent;
-    transition: all 0.15s;
-    line-height: 1;
+    text-align: center;
+    width: 100%;
+    font-family: var(--font-pixel);
   }
   .mood-btn:hover { background: var(--surface2); }
   .mood-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.12); }
@@ -391,7 +391,7 @@
 }
 
 /* Pixel buttons */
-.btn, .mood-btn, .cal-nav-btn {
+.btn, .cal-nav-btn {
   font-family: var(--font-ui);
   border: 3px solid;
   border-color: #888 #444 #222 #666;
@@ -403,7 +403,7 @@
   border-radius: 0;
   transition: none;
 }
-.btn:active, .mood-btn:active, .cal-nav-btn:active {
+.btn:active, .cal-nav-btn:active {
   border-color: #444 #888 #666 #222;
   transform: translate(1px, 1px);
 }
@@ -1408,7 +1408,7 @@
         <button class="mood-btn" data-mood=":)" title="不错">:)</button>
         <button class="mood-btn" data-mood=":|" title="一般">:|</button>
         <button class="mood-btn" data-mood="x(" title="烦躁">x(</button>
-        <button class="mood-btn" data-mood=":(" title="沮丧"x(</button>
+        <button class="mood-btn" data-mood=":(" title="沮丧">:(</button>
       </div>
     </div>
     <div class="btn-row">
@@ -1480,47 +1480,46 @@ const LEVEL_NAMES = [
 
 const BRANCH_TAG_WEIGHTS = {
   jazz: {
-    arpeggio:    { tech:6, harmony:2 },
-    walking:     { tech:2, rhythm:3, improv:2, repertoire:1 },
-    ear:         { ear:6, repertoire:2 },
-    metronome:   { rhythm:6 },
-    improv:      { improv:5, tech:2 },
-    theory:      { harmony:6 },
-    song:        { repertoire:4, rhythm:2, improv:1 },
-    technique:   { tech:5 }
+    arpeggio:  { tech:6, harmony:2 },
+    groove:    { tech:2, rhythm:3, improv:2, repertoire:1 },
+    ear:       { ear:6, repertoire:2 },
+    metronome: { rhythm:6 },
+    improv:    { improv:5, tech:2 },
+    theory:    { harmony:6 },
+    song:      { repertoire:4, rhythm:2, improv:1 },
+    slap:      { tech:3, rhythm:2 }
   },
   pop: {
-    // Easiest branch — generous XP, focus on tech/harmony/repertoire
-    arpeggio:    { tech:5, harmony:2 },
-    walking:     { rhythm:3, repertoire:3, tech:1 },
-    ear:         { ear:4, repertoire:2 },
-    metronome:   { rhythm:5 },
-    improv:      { tech:2, improv:2 },
-    theory:      { harmony:5 },
-    song:        { repertoire:5, rhythm:2, tech:1 },
-    technique:   { tech:5 }
+    arpeggio:  { tech:5, harmony:2 },
+    groove:    { rhythm:4, repertoire:3, tech:1 },
+    ear:       { ear:4, repertoire:2 },
+    metronome: { rhythm:5 },
+    improv:    { improv:2, tech:1 },
+    theory:    { harmony:5 },
+    song:      { repertoire:5, rhythm:2, tech:1 },
+    slap:      { tech:4, rhythm:3 }
   },
   neon: {
-    arpeggio:    { tech:5, rhythm:2 },
-    walking:     { rhythm:4, tech:2 },
-    ear:         { ear:3, repertoire:2 },
-    metronome:   { rhythm:6, tech:1 },
-    improv:      { tech:3, improv:3 },
-    theory:      { harmony:3 },
-    song:        { repertoire:4, rhythm:2 },
-    technique:   { tech:6 }
+    arpeggio:  { tech:5, rhythm:2 },
+    groove:    { rhythm:5, tech:2 },
+    ear:       { ear:3, repertoire:2 },
+    metronome: { rhythm:6, tech:1 },
+    improv:    { tech:3, improv:3 },
+    theory:    { harmony:3 },
+    song:      { repertoire:3, rhythm:3, tech:1 },
+    slap:      { tech:6, rhythm:3 }
   }
 };
 
 const TAG_OPTIONS = [
-  { id:'arpeggio',  label:'🎹 琶音/音阶' },
-  { id:'walking',   label:'🚶 Walking Bass' },
+  { id:'arpeggio',  label:'🎹 音阶/琶音' },
+  { id:'groove',    label:'🎸 律动/Groove' },
   { id:'ear',       label:'🎧 扒谱/练耳' },
-  { id:'metronome', label:'⏱️ 节拍器/节奏' },
+  { id:'metronome', label:'⏱️ 节奏训练' },
   { id:'improv',    label:'🎵 即兴/Solo' },
   { id:'theory',    label:'📚 乐理/和声' },
   { id:'song',      label:'🎤 曲目跟弹' },
-  { id:'technique', label:'🔧 手指/技巧' }
+  { id:'slap',      label:'🖐️ Slap/击勾' }
 ];
 
 function defaultRpgState() {
@@ -2077,7 +2076,8 @@ function renderStats() {
   chart.innerHTML = html;
 
   updateStreak();
-  renderRpgPanel(loadMeta().activeBranch);
+  // Delay to ensure DOM is fully painted
+  setTimeout(() => renderRpgPanel(loadMeta().activeBranch), 0);
 }
 
 // ============================================================
