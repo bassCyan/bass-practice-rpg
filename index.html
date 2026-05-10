@@ -1365,7 +1365,7 @@
       <p><strong>标签权重：</strong>不同练琴类型对不同维度的基础加成不同（如"琶音"侧重技术+和声）</p>
       <p><strong>练琴时长：</strong>练得越久经验越多（纯练琴时间，玩手机不算噢）</p>
       <p><strong>今日重点：</strong>选择一个侧重的练习方向，系统自动分配各维度权重</p>
-      <p><strong>心情加成：</strong>:D +5% :) +2% :| >:( :( 不加成（差心情不扣分）</p>
+      <p><strong>心情加成：</strong>:D +5% :) +2% :| x( :( 不加成（差心情不扣分）</p>
       <p style="margin-top:8px;color:var(--text2);">💡 超过5天不练某项维度会开始衰减（每天-2%，不低于当前等级底线）</p>
     </div>
     <div class="btn-row" style="justify-content:center;margin-top:16px;">
@@ -1407,8 +1407,8 @@
         <button class="mood-btn" data-mood=":D" title="超爽">:D</button>
         <button class="mood-btn" data-mood=":)" title="不错">:)</button>
         <button class="mood-btn" data-mood=":|" title="一般">:|</button>
-        <button class="mood-btn" data-mood=">:(" title="烦躁">>:(</button>
-        <button class="mood-btn" data-mood=":(" title="沮丧">:(</button>
+        <button class="mood-btn" data-mood="x(" title="烦躁">x(</button>
+        <button class="mood-btn" data-mood=":(" title="沮丧"x(</button>
       </div>
     </div>
     <div class="btn-row">
@@ -1662,7 +1662,7 @@ const now = new Date();
 currentYear = now.getFullYear();
 currentMonth = now.getMonth() + 1; // 1-based
 
-const MOODS = [':D', ':)', ':|', '>:(', ':('];
+const MOODS = [':D', ':)', ':|', 'x(', ':('];
 
 // ============================================================
 // NAVIGATION
@@ -1901,7 +1901,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const timeDistribution = { ...preset.dist };
 
   // Mood multiplier
-  const moodMult = { ':D': 1.05, ':)': 1.02, ':|': 1.0, '>(':': 1.0, ':(': 1.0 }[mood] || 1.0;
+  const moodMult = { ':D': 1.05, ':)': 1.02, ':|': 1.0, 'x(': 1.0, ':(': 1.0 }[mood] || 1.0;
 
   // Calculate XP for all 3 branches
   const xpGainedByBranch = {};
@@ -3202,7 +3202,7 @@ function generateAdvice(rpgByBranch, tags, mood) {
     ':D': '状态火热！今天手感起飞了，保持这股劲！',
     ':)': '稳扎稳打，不错的一天。',
     ':|': '平淡也是练琴的一部分，坚持就是胜利。',
-    '>:(': '烦躁日还能坐下来，已经是胜利。',
+    'x(': '烦躁日还能坐下来，已经是胜利。',
     ':(': '能坚持打卡就是勇士，会好起来的。'
   };
   if (mood && moodTexts[mood]) lines.push(moodTexts[mood]);
