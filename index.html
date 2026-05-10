@@ -2824,12 +2824,6 @@ function metroTick() {
   metroState.beatIndex++;
 }
 
-// Create AudioContext on load (will be suspended on iOS)
-metroState.audioCtx = null;
-try {
-  metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-} catch(e) {}
-
 function startMetronome() {
   if (metroState.running) return;
   // Re-create if closed or missing
@@ -2837,19 +2831,14 @@ function startMetronome() {
     try { metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
   }
   const ctx = metroState.audioCtx;
-  // Resume (iOS requires this in user gesture)
-  const doStart = () => {
-    metroState.running = true;
-    metroState.beatIndex = 0;
-    document.getElementById('btnMetroStart').textContent = '■ STOP';
-    metroTick();
-    metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
-  };
-  if (ctx.state === 'suspended') {
-    ctx.resume().then(doStart).catch(() => {});
-  } else {
-    doStart();
-  }
+  // iOS: must resume + play sound synchronously within the gesture
+  ctx.resume();
+  metroState.running = true;
+  metroState.beatIndex = 0;
+  document.getElementById('btnMetroStart').textContent = '■ STOP';
+  // Play a tick immediately to unlock iOS audio
+  try { playClick(false); } catch(e) {}
+  metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
 }
 
 function playClick(isAccent) {
