@@ -244,17 +244,18 @@
 
   .mood-selector { display: flex; gap: 6px; flex-direction: column; }
   .mood-btn {
-    font-size: 1.4em;
-    padding: 8px 12px;
+    font-size: 1.6em;
+    padding: 10px 14px;
     cursor: pointer;
-    background: var(--bg);
-    border: 2px solid transparent;
-    text-align: center;
+    background: var(--pixel-dark);
+    border: 3px solid var(--border);
+    text-align: left;
     width: 100%;
-    font-family: var(--font-pixel);
+    font-family: monospace;
+    letter-spacing: 2px;
   }
-  .mood-btn:hover { background: var(--surface2); }
-  .mood-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.12); }
+  .mood-btn:hover { background: var(--surface2); border-color: var(--accent); }
+  .mood-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.15); color: var(--accent); }
 
   .btn-row { display: flex; gap: 10px; margin-top: 20px; }
   .btn {
@@ -1414,11 +1415,11 @@
     <div class="form-group">
       <label>😊 练琴心情</label>
       <div class="mood-selector" id="moodSelector">
-        <button class="mood-btn" data-mood=":D" title="超爽">:D</button>
-        <button class="mood-btn" data-mood=":)" title="不错">:)</button>
-        <button class="mood-btn" data-mood=":|" title="一般">:|</button>
-        <button class="mood-btn" data-mood="x(" title="烦躁">x(</button>
-        <button class="mood-btn" data-mood=":(" title="沮丧">:(</button>
+        <button class="mood-btn" data-mood=":D" title="超爽">:D   超爽</button>
+        <button class="mood-btn" data-mood=":)" title="不错">:)   不错</button>
+        <button class="mood-btn" data-mood=":|" title="一般">:|   一般</button>
+        <button class="mood-btn" data-mood="x(" title="烦躁">x(   烦躁</button>
+        <button class="mood-btn" data-mood=":(" title="沮丧">:(   沮丧</button>
       </div>
     </div>
     <div class="btn-row">
@@ -1971,7 +1972,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const hasXP = Object.values(xpGainedByBranch).some(g => Object.keys(g).length > 0);
   const hasSignificantTime = Object.values(timeDistribution).some(v => v > 10);
   if (hasXP || hasSignificantTime) {
-    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood);
+    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood, time);
   }
 });
 
@@ -2741,12 +2742,15 @@ function renderPlan(branch) {
     tab.classList.toggle('active', tab.dataset.branch === branchKey);
   });
   let data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
-  // Put "每日练习安排" at the top
+  // Put "每日练习安排" at the top, renumber
   data = [...data].sort((a, b) => {
     if (a.title.includes('每日练习')) return -1;
     if (b.title.includes('每日练习')) return 1;
     return 0;
-  });
+  }).map((s, i) => ({
+    ...s,
+    title: s.title.replace(/^\d+/, String(i + 1))
+  }));
   const container = document.getElementById('planSections');
   container.innerHTML = data.map((section, i) => `
     <div class="plan-section ${''}">
@@ -3114,11 +3118,11 @@ function renderRefTable(branch) {
 // ============================================================
 // SETTLEMENT FUNCTIONS
 // ============================================================
-function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood) {
+function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood, time) {
   const overlay = document.getElementById('settlementOverlay');
   if (!overlay) return;
   // Store for share card
-  lastSettlementData = { xpGainedByBranch, rpgByBranch, dateStr, time: document.getElementById('inputTime').value, tags, mood };
+  lastSettlementData = { xpGainedByBranch, rpgByBranch, dateStr, time, tags, mood };
   // Hide share screen on new settlement
   const shareScreen = document.getElementById('settlementShare');
   if (shareScreen) shareScreen.style.display = 'none';
