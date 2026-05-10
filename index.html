@@ -2824,14 +2824,37 @@ function metroTick() {
   metroState.beatIndex++;
 }
 
+// iOS audio unlock — must be called from a user gesture
+function ensureAudio() {
+  if (!metroState.audioCtx) {
+    metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (metroState.audioCtx.state === 'suspended') {
+    metroState.audioCtx.resume();
+    // Play a silent buffer to unlock iOS audio
+    const buf = metroState.audioCtx.createBuffer(1, 1, 22050);
+    const src = metroState.audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(metroState.audioCtx.destination);
+    src.start(0);
+    src.stop(metroState.audioCtx.currentTime + 0.001);
+  }
+}
+
 function startMetronome() {
   if (metroState.running) return;
-  // iOS: must create+resume AudioContext inside user gesture
-  if (metroState.audioCtx) {
-    try { metroState.audioCtx.close(); } catch(e) {}
+  ensureAudio();
+  if (metroState.audioCtx.state === 'suspended') {
+    // iOS still suspended — try one more resume
+    metroState.audioCtx.resume().then(() => {
+      metroState.running = true;
+      metroState.beatIndex = 0;
+      document.getElementById('btnMetroStart').textContent = '■ STOP';
+      metroTick();
+      metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+    });
+    return;
   }
-  metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  metroState.audioCtx.resume();
   metroState.running = true;
   metroState.beatIndex = 0;
   document.getElementById('btnMetroStart').textContent = '■ STOP';
@@ -2842,7 +2865,7 @@ function startMetronome() {
 function playClick(isAccent) {
   if (!metroState.soundOn || !metroState.audioCtx) return;
   const ctx = metroState.audioCtx;
-  if (ctx.state === 'suspended') { ctx.resume(); return; }
+  if (ctx.state === 'suspended') return;
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
