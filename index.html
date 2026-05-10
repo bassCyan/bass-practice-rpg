@@ -1529,8 +1529,11 @@ function saveBranchState(branch, state) {
 function loadMeta() {
   try {
     const raw = localStorage.getItem(STORAGE_RPG_META);
-    if (!raw) return { version: 2, activeBranch: 'jazz' };
-    return JSON.parse(raw);
+    const def = { version: 2, activeBranch: 'jazz' };
+    if (!raw) return def;
+    const parsed = JSON.parse(raw);
+    if (!parsed.activeBranch) parsed.activeBranch = 'jazz';
+    return parsed;
   } catch { return { version: 2, activeBranch: 'jazz' }; }
 }
 
@@ -2776,7 +2779,8 @@ function metroTick() {
 
 function startMetronome() {
   if (metroState.running) return;
-  if (!metroState.audioCtx) {
+  // Always create fresh AudioContext inside user gesture (fixes iOS/Safari)
+  if (!metroState.audioCtx || metroState.audioCtx.state === 'closed') {
     metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
   if (metroState.audioCtx.state === 'suspended') {
