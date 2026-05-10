@@ -373,7 +373,7 @@
       overflow-x: auto;
       gap: 4px;
     }
-    .logo { display: none; }
+    .logo { font-size: 0.65em; padding: 0 12px 10px; }
     .nav-item { padding: 8px 12px; border-left: none; border-bottom: 2px solid transparent; font-size: 0.85em; white-space: nowrap; }
     .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
     .streak-box { display: none; }
@@ -898,12 +898,13 @@
 /* ===== Footer ===== */
 .footer {
   text-align: center;
-  padding: 16px 20px;
-  font-size: 0.6em;
-  color: rgba(224,224,208,0.35);
+  padding: 14px 16px;
+  font-size: 0.58em;
+  color: rgba(224,224,208,0.4);
   font-family: var(--font-ui);
   border-top: 1px solid rgba(74,74,106,0.3);
   margin-top: auto;
+  line-height: 1.8;
 }
 
 /* ===== Character Creation ===== */
@@ -1238,6 +1239,8 @@
         <label class="metro-check"><input type="checkbox" id="chkVisual" checked> 👁️ 视觉闪烁</label>
       </div>
 
+      <p style="font-size:0.55em;color:var(--text2);text-align:center;margin-bottom:6px;font-family:var(--font-ui);">📱 iOS 用户：请确认侧边静音开关已关闭，否则无声音</p>
+
       <div class="metro-controls">
         <button class="btn btn-primary metro-start" id="btnMetroStart">▶ START</button>
         <button class="btn btn-ghost metro-tap" id="btnTapTempo">👆 TAP</button>
@@ -1289,7 +1292,7 @@
 
 <!-- FOOTER -->
 <footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器<br>
-<span style="opacity:0.5;">💡 浏览器数据默认在 C 盘用户目录，建议将浏览器用户数据目录迁移至其他盘（Chrome: 设置→高级→用户数据目录；或使用符号链接）</span></footer>
+<span style="opacity:0.5;">💡 数据存在浏览器本地。换设备/换浏览器数据不互通，可用导出导入备份</span></footer>
 
 <input type="file" id="fileImport" accept=".json" style="display:none;">
 
