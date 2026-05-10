@@ -2144,19 +2144,19 @@ const BRANCH_PLAN_DATA = { jazz: [
 <h3>第一优先：和弦琶音（Arpeggios）</h3>
 <table>
 <tr><th>和弦类型</th><th>构成</th><th>示例（C）</th></tr>
-<tr><td>Maj7</td><td>1 3 5 7</td><td>C E G B</td></tr>
-<tr><td>Dom7</td><td>1 3 5 b7</td><td>C E G Bb</td></tr>
-<tr><td>m7</td><td>1 b3 5 b7</td><td>C Eb G Bb</td></tr>
-<tr><td>m7b5</td><td>1 b3 b5 b7</td><td>C Eb Gb Bb</td></tr>
-<tr><td>Dim7</td><td>1 b3 b5 bb7</td><td>C Eb Gb A</td></tr>
+<tr><td>Maj7</td><td>1 3 5 7</td><td>I III V VII（C调：C E G B）</td></tr>
+<tr><td>Dom7</td><td>1 3 5 b7</td><td>I III V bVII（C调：C E G Bb）</td></tr>
+<tr><td>m7</td><td>1 b3 5 b7</td><td>I bIII V bVII（C调：C Eb G Bb）</td></tr>
+<tr><td>m7b5</td><td>1 b3 b5 b7</td><td>I bIII bV bVII（C调：C Eb Gb Bb）</td></tr>
+<tr><td>Dim7</td><td>1 b3 b5 bb7</td><td>I bIII bV bbVII（C调：C Eb Gb A）</td></tr>
 </table>
 <p><strong>练习法：</strong>按五度圈练，每个调弹一个八度，节拍器开在2、4拍。</p>
 
 <h3>第二优先：Mixolydian（属七音阶）</h3>
-<p>大调音阶降7音：<code>C D E F G A Bb</code></p>
+<p>大调音阶降7音：<code>1 2 3 4 5 6 b7</code>（C调：C D E F G A Bb）</p>
 
 <h3>第三优先：Dorian（小七音阶）</h3>
-<p>自然小调升6音：<code>D E F G A B C</code></p>
+<p>自然小调升6音：<code>1 2 b3 4 5 6 b7</code>（D调：D E F G A B C）</p>
 
 <h3>指板记忆三法</h3>
 <ul>
@@ -2300,6 +2300,48 @@ const BRANCH_PLAN_DATA = { jazz: [
 <div class="highlight-box"><strong>节拍器永远开在2、4拍。</strong>这是爵士贝斯手的第一条戒律。<br>
 <strong>每次练琴录音。</strong>你弹的时候觉得还行，回听全是问题——这就是进步空间。<br>
 <strong>慢就是快。</strong>60bpm走稳了，提速自然；100bpm走得稀碎，永远不稳。</div>`
+  },
+  {
+    title: '8. 爵士曲目自测表（你能弹几首？）',
+    body: `
+<div class="highlight-box">打勾你能<strong>不看谱完整弹下来</strong>的曲子。会Walking Bass + 能Solo一段才算"能弹"。</div>
+
+<h3>🥉 初级 — 会这些，你入门了</h3>
+<table>
+<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
+<tr><td>☐</td><td>F Blues</td><td>12小节Blues，最基础Walking</td></tr>
+<tr><td>☐</td><td>Bb Blues</td><td>另一个常用Blues调</td></tr>
+<tr><td>☐</td><td>Autumn Leaves</td><td>ii-V-I 大小调切换经典</td></tr>
+<tr><td>☐</td><td>Blue Bossa</td><td>拉丁节奏+小调ii-V-I</td></tr>
+<tr><td>☐</td><td>So What</td><td>两和弦Modal，空间感</td></tr>
+</table>
+<p style="color:var(--text2);">→ 勾满 5 首：初级 III，可以开始接触中级曲目</p>
+
+<h3>🥈 中级 — 能弹这些，可以跟Jam了</h3>
+<table>
+<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
+<tr><td>☐</td><td>All of Me</td><td>中速Swing，和弦密集</td></tr>
+<tr><td>☐</td><td>Take the A Train</td><td>快节奏Swing，II-V-I串联</td></tr>
+<tr><td>☐</td><td>All The Things You Are</td><td>多次转调，和声分析大考</td></tr>
+<tr><td>☐</td><td>Oleo</td><td>Rhythm Changes，极快</td></tr>
+<tr><td>☐</td><td>Beautiful Love</td><td>小调经典，和声色彩丰富</td></tr>
+<tr><td>☐</td><td>There Will Never Be Another You</td><td>标准Swing，中速</td></tr>
+<tr><td>☐</td><td>Green Dolphin Street</td><td>拉丁+Swing切换</td></tr>
+</table>
+<p style="color:var(--text2);">→ 勾满 5 首以上：中级水平，你可以在大部分Jam Session里撑住</p>
+
+<h3>🥇 高级 — 拿下这些，你已经很强了</h3>
+<table>
+<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
+<tr><td>☐</td><td>Giant Steps</td><td>急速转调，Coltrane Changes</td></tr>
+<tr><td>☐</td><td>Moment's Notice</td><td>同上，旋律+和声密度极高</td></tr>
+<tr><td>☐</td><td>Stella By Starlight</td><td>复杂和声，Solo需要深厚功底</td></tr>
+<tr><td>☐</td><td>Round Midnight</td><td>慢速Ballad，最难弹好</td></tr>
+<tr><td>☐</td><td>Donna Lee</td><td>Bebop极速曲，手指+脑力双重考验</td></tr>
+</table>
+<p style="color:var(--text2);">→ 勾满 3 首：高级水平，你已经超过了大多数业余贝斯手</p>
+
+<div class="highlight-box">不是听过、弹过片段就算。<strong>能从头到尾、跟伴奏、不看谱、不出大错</strong>，才算打勾。</div>`
   }
 ],
 
