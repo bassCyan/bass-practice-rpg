@@ -368,13 +368,14 @@
       width: 100%;
       height: auto;
       flex-direction: row;
-      padding: 10px;
+      padding: 10px 0;
       position: static;
       overflow-x: auto;
       gap: 4px;
+      -webkit-overflow-scrolling: touch;
     }
-    .logo { font-size: 0.65em; padding: 0 12px 10px; }
-    .nav-item { padding: 8px 12px; border-left: none; border-bottom: 2px solid transparent; font-size: 0.85em; white-space: nowrap; }
+    .logo { font-size: 0.65em; padding: 0 8px 10px 12px; white-space: nowrap; flex-shrink: 0; }
+    .nav-item { padding: 8px 10px; border-left: none; border-bottom: 2px solid transparent; font-size: 0.8em; white-space: nowrap; flex-shrink: 0; }
     .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
     .streak-box { display: none; }
     .main { padding: 16px; max-height: none; }
@@ -1292,6 +1293,11 @@
 
 <!-- FOOTER -->
 <footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器<br>
+<span id="footerExportImport" style="display:none;">
+  <button class="btn btn-ghost btn-sm" id="btnExport2" style="font-size:0.9em;margin:4px;">📤 导出</button>
+  <button class="btn btn-ghost btn-sm" id="btnImport2" style="font-size:0.9em;margin:4px;">📥 导入</button>
+  <br>
+</span>
 <span style="opacity:0.5;">💡 数据存在浏览器本地。换设备/换浏览器数据不互通，可用导出导入备份</span></footer>
 
 <input type="file" id="fileImport" accept=".json" style="display:none;">
@@ -1358,8 +1364,8 @@
       </p>
       <p><strong>标签权重：</strong>不同练琴类型对不同维度的基础加成不同（如"琶音"侧重技术+和声）</p>
       <p><strong>练琴时长：</strong>练得越久经验越多（纯练琴时间，玩手机不算噢）</p>
-      <p><strong>时间占比：</strong>你今天在各项维度上分配的时间比例，总和100%</p>
-      <p><strong>心情加成：</strong>😄+5% 🙂+2% 😐😤😢不加成（差心情不扣分）</p>
+      <p><strong>今日重点：</strong>选择一个侧重的练习方向，系统自动分配各维度权重</p>
+      <p><strong>心情加成：</strong>:D +5% :) +2% :| >:( :( 不加成（差心情不扣分）</p>
       <p style="margin-top:8px;color:var(--text2);">💡 超过5天不练某项维度会开始衰减（每天-2%，不低于当前等级底线）</p>
     </div>
     <div class="btn-row" style="justify-content:center;margin-top:16px;">
@@ -1390,21 +1396,19 @@
       </div>
     </div>
     <div class="form-group">
-      <label>⏱️ 时间分配（拖动滑块，总和自动锁定100%）</label>
-      <div class="self-rating-grid" id="selfRatingGrid">
+      <label>🎯 今日重点</label>
+      <div class="tag-selector" id="focusPresets" style="margin-bottom:4px;">
       </div>
-    </div>
-    <div class="form-group" style="text-align:right;">
-      <button type="button" class="btn btn-ghost btn-sm" id="btnRefTable">📋 查看评分参照表</button>
+      <p style="font-size:0.55em;color:var(--text2);margin-top:4px;font-family:var(--font-ui);">选一个今天最侧重的方向，系统自动分配维度权重</p>
     </div>
     <div class="form-group">
       <label>😊 练琴心情</label>
       <div class="mood-selector" id="moodSelector">
-        <button class="mood-btn" data-mood="😄" title="超爽">😄</button>
-        <button class="mood-btn" data-mood="🙂" title="不错">🙂</button>
-        <button class="mood-btn" data-mood="😐" title="一般">😐</button>
-        <button class="mood-btn" data-mood="😤" title="烦躁">😤</button>
-        <button class="mood-btn" data-mood="😢" title="沮丧">😢</button>
+        <button class="mood-btn" data-mood=":D" title="超爽">:D</button>
+        <button class="mood-btn" data-mood=":)" title="不错">:)</button>
+        <button class="mood-btn" data-mood=":|" title="一般">:|</button>
+        <button class="mood-btn" data-mood=">:(" title="烦躁">>:(</button>
+        <button class="mood-btn" data-mood=":(" title="沮丧">:(</button>
       </div>
     </div>
     <div class="btn-row">
@@ -1658,7 +1662,7 @@ const now = new Date();
 currentYear = now.getFullYear();
 currentMonth = now.getMonth() + 1; // 1-based
 
-const MOODS = ['😄', '🙂', '😐', '😤', '😢'];
+const MOODS = [':D', ':)', ':|', '>:(', ':('];
 
 // ============================================================
 // NAVIGATION
@@ -1801,43 +1805,38 @@ function renderTagSelector(existingTags) {
   });
 }
 
-function renderTimeDistribution(existingDist) {
-  const container = document.getElementById('selfRatingGrid');
+const FOCUS_PRESETS = [
+  { id:'balanced', label:'⚖️ 均衡练习', dist:{ tech:17, rhythm:17, ear:16, harmony:17, improv:16, repertoire:17 } },
+  { id:'tech',     label:'🔧 偏重技术', dist:{ tech:35, rhythm:15, ear:10, harmony:15, improv:10, repertoire:15 } },
+  { id:'theory',   label:'📚 偏重乐理', dist:{ tech:10, rhythm:10, ear:15, harmony:35, improv:15, repertoire:15 } },
+  { id:'groove',   label:'🎤 偏重实战', dist:{ tech:15, rhythm:20, ear:10, harmony:10, improv:10, repertoire:35 } },
+  { id:'improv',   label:'🎵 偏重即兴', dist:{ tech:10, rhythm:10, ear:15, harmony:15, improv:35, repertoire:15 } },
+];
+
+function renderPracticePresets(existingDist) {
+  const container = document.getElementById('focusPresets');
   if (!container) return;
-  const dist = existingDist || {};
-  const defaultPct = Math.floor(100 / DIM_KEYS.length);
-  const vals = DIM_KEYS.map(k => dist[k] != null ? dist[k] : defaultPct);
-  // Normalize
-  const sum = vals.reduce((a, b) => a + b, 0) || 1;
-  for (let i = 0; i < vals.length; i++) vals[i] = Math.round(vals[i] / sum * 100);
-  const adj = 100 - vals.reduce((a, b) => a + b, 0);
-  vals[vals.length - 1] += adj;
-
-  container.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <span style="font-size:0.65em;color:var(--text2);font-family:var(--font-ui);">总计：</span>
-      <span id="distTotal" style="font-family:var(--font-pixel);font-size:0.75em;color:var(--green);">100%</span>
-    </div>
-    ${DIM_KEYS.map((key, idx) => {
-      const pct = vals[idx];
-      return `<div class="rating-row">
-        <span class="dim-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0,4)}</span>
-        <input type="number" min="0" max="100" value="${pct}" data-dim="${key}" style="width:58px;text-align:center;font-family:var(--font-ui);font-size:0.75em;background:var(--pixel-dark);border:2px solid var(--border);color:var(--text);padding:4px;">
-        <span class="rating-val" style="min-width:28px;">%</span>
-      </div>`;
-    }).join('')}
-  `;
-
-  // Update total display on input change
-  container.querySelectorAll('input[type="number"]').forEach(input => {
-    input.addEventListener('input', () => {
-      let total = 0;
-      container.querySelectorAll('input[type="number"]').forEach(s => total += parseInt(s.value) || 0);
-      const totalEl = document.getElementById('distTotal');
-      if (totalEl) {
-        totalEl.textContent = total + '%';
-        totalEl.style.color = total === 100 ? 'var(--green)' : 'var(--red)';
+  // Find matching preset or default to balanced
+  let activeId = 'balanced';
+  if (existingDist) {
+    for (const preset of FOCUS_PRESETS) {
+      let match = true;
+      for (const dim of DIM_KEYS) {
+        if (Math.abs((preset.dist[dim] || 0) - (existingDist[dim] || 0)) > 2) { match = false; break; }
       }
+      if (match) { activeId = preset.id; break; }
+    }
+  }
+
+  container.innerHTML = FOCUS_PRESETS.map(p => {
+    const sel = p.id === activeId ? ' selected' : '';
+    return `<span class="tag-chip${sel}" data-preset="${p.id}">${p.label}</span>`;
+  }).join('');
+
+  container.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
     });
   });
 }
@@ -1857,7 +1856,7 @@ function openModal(dateStr) {
   const existingTags = existing ? existing.tags : [];
   const existingDist = existing ? existing.timeDistribution : null;
   renderTagSelector(existingTags);
-  renderTimeDistribution(existingDist);
+  renderPracticePresets(existingDist);
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('inputTime').focus();
 }
@@ -1895,21 +1894,14 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const tagChips = document.querySelectorAll('#tagSelector .tag-chip.selected');
   tagChips.forEach(c => tags.push(c.dataset.tag));
 
-  // Collect time distribution (normalize to 100%)
-  const timeDistribution = {};
-  const distInputs = document.querySelectorAll('#selfRatingGrid input[type="number"]');
-  let distTotal = 0;
-  distInputs.forEach(s => { const v = parseInt(s.value) || 0; timeDistribution[s.dataset.dim] = v; distTotal += v; });
-  if (distTotal > 0 && distTotal !== 100) {
-    for (const dim of DIM_KEYS) {
-      timeDistribution[dim] = Math.round((timeDistribution[dim] || 0) / distTotal * 100);
-    }
-    const adj = 100 - Object.values(timeDistribution).reduce((a, b) => a + b, 0);
-    timeDistribution[DIM_KEYS[DIM_KEYS.length - 1]] += adj;
-  }
+  // Get time distribution from selected preset
+  const selectedPreset = document.querySelector('#focusPresets .tag-chip.selected');
+  const presetId = selectedPreset ? selectedPreset.dataset.preset : 'balanced';
+  const preset = FOCUS_PRESETS.find(p => p.id === presetId) || FOCUS_PRESETS[0];
+  const timeDistribution = { ...preset.dist };
 
   // Mood multiplier
-  const moodMult = { '😄': 1.05, '🙂': 1.02, '😐': 1.0, '😤': 1.0, '😢': 1.0 }[mood] || 1.0;
+  const moodMult = { ':D': 1.05, ':)': 1.02, ':|': 1.0, '>(':': 1.0, ':(': 1.0 }[mood] || 1.0;
 
   // Calculate XP for all 3 branches
   const xpGainedByBranch = {};
@@ -2741,7 +2733,7 @@ function renderPlan(branch) {
   const data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
   const container = document.getElementById('planSections');
   container.innerHTML = data.map((section, i) => `
-    <div class="plan-section ${i === 0 ? 'open' : ''}">
+    <div class="plan-section ${''}">
       <div class="plan-section-header" data-index="${i}">
         <span>${section.title}</span>
         <span class="arrow">▶</span>
@@ -3207,11 +3199,11 @@ function generateAdvice(rpgByBranch, tags, mood) {
 
   // Mood response
   const moodTexts = {
-    '😄': '🔥 状态火热！今天的手感起飞了，保持这股劲！',
-    '🙂': '😊 稳扎稳打，不错的一天。',
-    '😐': '📋 平淡也是练琴的一部分，坚持就是胜利。',
-    '😤': '💪 烦躁日还能坐下来，已经是胜利。',
-    '😢': '🫂 能坚持打卡就是勇士，会好起来的。'
+    ':D': '状态火热！今天手感起飞了，保持这股劲！',
+    ':)': '稳扎稳打，不错的一天。',
+    ':|': '平淡也是练琴的一部分，坚持就是胜利。',
+    '>:(': '烦躁日还能坐下来，已经是胜利。',
+    ':(': '能坚持打卡就是勇士，会好起来的。'
   };
   if (mood && moodTexts[mood]) lines.push(moodTexts[mood]);
 
@@ -3792,13 +3784,24 @@ function init() {
   }
 
   // --- Export / Import ---
-  const btnExport = document.getElementById('btnExport');
-  if (btnExport) btnExport.addEventListener('click', exportAllData);
-
-  const btnImport = document.getElementById('btnImport');
+  function bindExportImport(btnExportId, btnImportId) {
+    const btnExport = document.getElementById(btnExportId);
+    if (btnExport) btnExport.addEventListener('click', exportAllData);
+    const btnImport = document.getElementById(btnImportId);
+    const fileImport = document.getElementById('fileImport');
+    if (btnImport && fileImport) {
+      btnImport.addEventListener('click', () => fileImport.click());
+    }
+  }
+  bindExportImport('btnExport', 'btnImport');
+  bindExportImport('btnExport2', 'btnImport2');
+  // Show footer buttons on mobile
+  if (window.innerWidth <= 768) {
+    const fei = document.getElementById('footerExportImport');
+    if (fei) fei.style.display = '';
+  }
   const fileImport = document.getElementById('fileImport');
-  if (btnImport && fileImport) {
-    btnImport.addEventListener('click', () => fileImport.click());
+  if (fileImport) {
     fileImport.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         importAllData(e.target.files[0]);
