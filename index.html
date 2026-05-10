@@ -2792,22 +2792,6 @@ function isAccentBeat(idx) {
   return false;
 }
 
-function playClick(isAccent) {
-  if (!metroState.soundOn || !metroState.audioCtx) return;
-  const ctx = metroState.audioCtx;
-  const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.type = 'square';
-  osc.frequency.value = isAccent ? 1000 : 800;
-  gain.gain.setValueAtTime(0.3, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-  osc.start(now);
-  osc.stop(now + 0.05);
-}
-
 function flashBeat(isAccent) {
   if (!metroState.visualOn) return;
   const pulse = document.getElementById('metroPulse');
@@ -3037,24 +3021,42 @@ const REFERENCE_TABLE = {
   }
 };
 
-// Branch-specific benchmark overrides
-const BRANCH_REF_BENCHMARKS = {
-  jazz: {},
+// Branch-specific reference overrides (standard, anchor, benchmark)
+const BRANCH_REF_OVERRIDES = {
+  jazz: {}, // jazz uses defaults from REFERENCE_TABLE
   pop: {
-    tech: { '初级':'Beatles - Let It Be 贝斯线', '中级':"Bruno Mars - Uptown Funk（Root-5-6-b7律动）", '高级':'Thundercat - Them Changes（Neo-Soul贝斯）' },
-    rhythm: { '初级':"Billie Eilish - bad guy（极简，空间感）", '中级':"Dua Lipa - Don't Start Now（现代Disco贝斯）", '高级':'Vulfpeck - Dean Town（16分驱动，手速+耐力）' },
-    ear: { '初级':"Ed Sheeran - Perfect（I-IV-vi-V万能进行）", '中级':"Daft Punk - Get Lucky（Disco Octave）", '高级':"Dua Lipa - Don't Start Now（复杂Fill扒谱）" },
-    harmony: { '初级':"Taylor Swift - Shake It Off（I-IV-V）", '中级':"Bruno Mars - Leave The Door Open（R&B和声）", '高级':"Stevie Wonder - Sir Duke（转调+复杂和声）" },
-    improv: { '初级':'根音+五度根据和弦进行自由切换', '中级':'在流行歌副歌即兴加Fill和经过音', '高级':'完整即兴编配一首流行歌的贝斯线' },
-    repertoire: { '初级':'5首流行歌完整弹完', '中级':'15首不同风格跟歌弹奏', '高级':'40分钟跟乐队完整演出' }
+    tech: {
+      '初级':{standard:'能弹完C大调音阶（两个八度），速度80bpm八分音符；会基本Slap拇指',anchor:'手指准确落在品上，换把无明显断音；拇指击弦音量均匀',benchmark:'Beatles - Let It Be 贝斯线'},
+      '中级':{standard:'所有大调音阶+五声音阶，速度120bpm；Slap+Pop基本组合',anchor:'各调音阶在E/A弦两个把位流畅切换；拇指+食指击勾协调',benchmark:'Bruno Mars - Uptown Funk（Root-5-6-b7+Ghost Note律动）'},
+      '高级':{standard:'即兴跑模进不依赖肌肉记忆；拨片/指弹/Slap三模式切换',anchor:'同一段乐句能用三种技巧弹出不同感觉',benchmark:'Thundercat - Them Changes（Neo-Soul贝斯）'}
+    },
+    rhythm: {
+      '初级':{standard:'节拍器60bpm，四分+八分音符稳重',anchor:'录30秒，回听偏差不超1/32拍',benchmark:"Billie Eilish - bad guy（极简，空间感控制）"},
+      '中级':{standard:'附点、切分、休止符都能卡准；锁住底鼓',anchor:'节拍器80bpm，附点节奏连续8小节无抢拍拖拍',benchmark:"Dua Lipa - Don't Start Now（现代Disco贝斯）"},
+      '高级':{standard:'主动创造Lay back/Push感觉且保持稳定',anchor:'同一BPM下同一乐句弹出三种时值感觉',benchmark:'Vulfpeck - Dean Town（16分驱动，手速+耐力）'}
+    },
+    repertoire: {
+      '初级':{standard:'能背下5首流行歌的贝斯线（根音+五度）',anchor:'不看谱弹完5首歌，录音对比无明显错误',benchmark:'Let It Be / Yellow / Perfect / Shake It Off / bad guy'},
+      '中级':{standard:'能背下15首不同风格（流行、摇滚、Funk、R&B）',anchor:'能跟一场小型演出不看谱走完',benchmark:'Uptown Funk / Get Lucky / Don\'t Start Now / Billie Jean'},
+      '高级':{standard:'不用谱子跟乐队走完40分钟+演出',anchor:'陌生乐队给和弦走向就能跟',benchmark:'职业流行贝斯手要求：靠Chord Chart就能演出'}
+    }
   },
   neon: {
-    tech: { '初级':'YOASOBI - 夜に駆ける（八分驱动）', '中级':"ZUTOMAYO - 秒針を噛む（16分+弦跳）", '高级':'ZUTOMAYO - お勉強しといてよ（Slap+拨片混合）' },
-    rhythm: { '初级':"King Gnu - 白日（情绪起伏节奏跟随）", '中级':"Eve - 廻廻奇譚（快节奏+大量加花）", '高级':'凛として時雨 - abnormalize（7/8+5/4变拍号）' },
-    ear: { '初级':"Official髭男dism - Pretender", '中级':"LiSA - 紅蓮華（Anime Rock）", '高级':'tricot - おちゃんせんすぅす（Math Rock贝斯）' },
-    harmony: { '初级':'J-Pop王道进行 IVM7→V7→iii7→vi7', '中级':'椎名林檎 - 丸の内サディスティック（复杂和声+转调）', '高级':'凛として時雨 - abnormalize（变拍+复杂和声）' },
-    improv: { '初级':'16分网格中安全地即兴加Fill', '中级':'在一段Anime Rock中即兴Solo 16小节', '高级':'混合拨片/Slap/三指即兴演奏' },
-    repertoire: { '初级':'5首Anime Song完整演奏', '中级':'15首J-Pop/J-Rock跟歌弹奏', '高级':'能跟完整一场Anime Song Live Set' }
+    tech: {
+      '初级':{standard:'能弹完C大调音阶，八分音符120bpm；交替拨片基础',anchor:'拨片上下拨音量均匀，换把无明显断音',benchmark:'YOASOBI - 夜に駆ける（八分驱动+根音五度）'},
+      '中级':{standard:'所有大调音阶+小调音阶，十六分140bpm；三指轮拨入门',anchor:'16分连续4小节不掉速；E/D/G弦任意组合弦跳',benchmark:'ZUTOMAYO - 秒針を噛む（16分+弦跳+复杂Fill）'},
+      '高级':{standard:'十六分180bpm+；拨片/Slap/三指/点弦混合技巧',anchor:'同一段乐句三种技巧模式切换；速度递进不掉速',benchmark:'ZUTOMAYO - お勉強しといてよ（Slap+拨片+三指混合）'}
+    },
+    rhythm: {
+      '初级':{standard:'节拍器60bpm，四分+八分+基本切分',anchor:'录30秒，回听偏差不超1/32拍',benchmark:'King Gnu - 白日（情绪起伏节奏跟随）'},
+      '中级':{standard:'十六分+三连音+反拍切分全部卡准',anchor:'节拍器100bpm，十六分8小节不抢不拖',benchmark:'Eve - 廻廻奇譚（快节奏+密集加花）'},
+      '高级':{standard:'奇数拍（5/4,7/8）稳定演奏；变拍号切换',anchor:'7/8拍16分连续8小节','benchmark':'凛として時雨 - abnormalize（7/8+5/4变拍号）'}
+    },
+    repertoire: {
+      '初级':{standard:'能完整演奏5首Anime Song/J-Pop',anchor:'不看谱弹完，节奏音色基本还原',benchmark:'夜に駆ける / 白日 / Lemon / Pretender / 紅蓮華'},
+      '中级':{standard:'能完整演奏15首J-Pop/J-Rock/Anime Song',anchor:'能跟一场Anime Song Live Set','benchmark':'廻廻奇譚 / 秒針を噛む / ただ君に晴れ / うっせぇわ'},
+      '高级':{standard:'高密度贝斯线完整还原，包括所有Fill和变拍段落',anchor:'陌生J-Pop听到贝斯线就能扒',benchmark:'お勉強しといてよ / abnormalize / おちゃんせんすぅす'}
+    }
   }
 };
 
@@ -3071,16 +3073,19 @@ function renderRefTable(branch) {
   for (const [dimKey, dimData] of Object.entries(REFERENCE_TABLE)) {
     html += `<h3 style="margin-top:16px;color:var(--accent);">${DIM_EMOJI[dimKey]} ${dimData.title}</h3>`;
     for (const [level, data] of Object.entries(dimData.levels)) {
-      const overrides = BRANCH_REF_BENCHMARKS[branchKey] || {};
+      const overrides = BRANCH_REF_OVERRIDES[branchKey] || {};
       const dimOverrides = overrides[dimKey] || {};
-      const benchmark = dimOverrides[level] || data.benchmark;
+      const levelOverride = dimOverrides[level] || {};
+      const standard = levelOverride.standard || data.standard;
+      const anchor = levelOverride.anchor || data.anchor;
+      const benchmark = levelOverride.benchmark || data.benchmark;
       html += `<div class="plan-section" style="margin-bottom:6px;">
         <div class="plan-section-header" style="padding:10px 14px;">
-          <span style="font-size:0.8em;">【${level}】${data.standard.slice(0, 40)}...</span>
+          <span style="font-size:0.8em;">【${level}】${standard.slice(0, 40)}...</span>
           <span class="arrow">▶</span>
         </div>
         <div class="plan-section-body">
-          <p><strong>可验证标准：</strong>${data.anchor}</p>
+          <p><strong>可验证标准：</strong>${anchor}</p>
           <p><strong>标杆参照：</strong>${benchmark}</p>
         </div>
       </div>`;
