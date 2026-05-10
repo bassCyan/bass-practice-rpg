@@ -2730,7 +2730,13 @@ function renderPlan(branch) {
   document.querySelectorAll('#planBranchTabs .char-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.branch === branchKey);
   });
-  const data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
+  let data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
+  // Put "每日练习安排" at the top
+  data = [...data].sort((a, b) => {
+    if (a.title.includes('每日练习')) return -1;
+    if (b.title.includes('每日练习')) return 1;
+    return 0;
+  });
   const container = document.getElementById('planSections');
   container.innerHTML = data.map((section, i) => `
     <div class="plan-section ${''}">
