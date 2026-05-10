@@ -2824,48 +2824,37 @@ function metroTick() {
   metroState.beatIndex++;
 }
 
-// iOS audio unlock — must be called from a user gesture
-function ensureAudio() {
-  if (!metroState.audioCtx) {
-    metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (metroState.audioCtx.state === 'suspended') {
-    metroState.audioCtx.resume();
-    // Play a silent buffer to unlock iOS audio
-    const buf = metroState.audioCtx.createBuffer(1, 1, 22050);
-    const src = metroState.audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(metroState.audioCtx.destination);
-    src.start(0);
-    src.stop(metroState.audioCtx.currentTime + 0.001);
-  }
-}
+// Create AudioContext on load (will be suspended on iOS)
+metroState.audioCtx = null;
+try {
+  metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+} catch(e) {}
 
 function startMetronome() {
   if (metroState.running) return;
-  ensureAudio();
-  if (metroState.audioCtx.state === 'suspended') {
-    // iOS still suspended — try one more resume
-    metroState.audioCtx.resume().then(() => {
-      metroState.running = true;
-      metroState.beatIndex = 0;
-      document.getElementById('btnMetroStart').textContent = '■ STOP';
-      metroTick();
-      metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
-    });
-    return;
+  // Re-create if closed or missing
+  if (!metroState.audioCtx || metroState.audioCtx.state === 'closed') {
+    try { metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
   }
-  metroState.running = true;
-  metroState.beatIndex = 0;
-  document.getElementById('btnMetroStart').textContent = '■ STOP';
-  metroTick();
-  metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+  const ctx = metroState.audioCtx;
+  // Resume (iOS requires this in user gesture)
+  const doStart = () => {
+    metroState.running = true;
+    metroState.beatIndex = 0;
+    document.getElementById('btnMetroStart').textContent = '■ STOP';
+    metroTick();
+    metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+  };
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(doStart).catch(() => {});
+  } else {
+    doStart();
+  }
 }
 
 function playClick(isAccent) {
-  if (!metroState.soundOn || !metroState.audioCtx) return;
+  if (!metroState.soundOn || !metroState.audioCtx || metroState.audioCtx.state !== 'running') return;
   const ctx = metroState.audioCtx;
-  if (ctx.state === 'suspended') return;
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
