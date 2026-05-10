@@ -2140,6 +2140,8 @@ const BRANCH_PLAN_DATA = { jazz: [
   {
     title: '2. 和弦进行速查',
     body: `
+<div class="highlight-box">以下示例均以 <strong>C 调</strong> 为例。移到其他调时，所有和弦同步平移（如移 D 调：Dm7→G7→Cmaj7 变成 Em7→A7→Dmaj7）。</div>
+
 <h3>(1) ii-V-I 大调</h3>
 <p><code>| Dm7 | G7 | Cmaj7 | Cmaj7 |</code></p>
 <p>贝斯根音：D → G → C，先刻进手指。</p>
@@ -2840,18 +2842,34 @@ function metroTick() {
 
 function startMetronome() {
   if (metroState.running) return;
-  // Always create fresh AudioContext inside user gesture (fixes iOS/Safari)
-  if (!metroState.audioCtx || metroState.audioCtx.state === 'closed') {
-    metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // iOS: must create+resume AudioContext inside user gesture
+  if (metroState.audioCtx) {
+    try { metroState.audioCtx.close(); } catch(e) {}
   }
-  if (metroState.audioCtx.state === 'suspended') {
-    metroState.audioCtx.resume();
-  }
+  metroState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  metroState.audioCtx.resume();
   metroState.running = true;
   metroState.beatIndex = 0;
   document.getElementById('btnMetroStart').textContent = '■ STOP';
   metroTick();
   metroState.intervalId = setInterval(metroTick, getMetroIntervalMs());
+}
+
+function playClick(isAccent) {
+  if (!metroState.soundOn || !metroState.audioCtx) return;
+  const ctx = metroState.audioCtx;
+  if (ctx.state === 'suspended') { ctx.resume(); return; }
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = 'square';
+  osc.frequency.value = isAccent ? 1000 : 800;
+  gain.gain.setValueAtTime(0.3, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+  osc.start(now);
+  osc.stop(now + 0.08);
 }
 
 function stopMetronome() {
