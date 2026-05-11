@@ -3630,71 +3630,128 @@ function drawShareCard(xpGainedByBranch, rpgByBranch, dateStr, time, tags, mood)
   const canvas = document.getElementById('shareCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  // HiDPI
+  const scale = window.devicePixelRatio || 1;
   const W = 400, H = 560;
-  canvas.width = W; canvas.height = H;
+  canvas.width = W * scale; canvas.height = H * scale;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(scale, scale);
 
   // Background
-  ctx.fillStyle = '#1a1a2e';
+  ctx.fillStyle = '#16213e';
   ctx.fillRect(0, 0, W, H);
 
   // Pixel border
   ctx.strokeStyle = '#f0b030';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(4, 4, W - 8, H - 8);
+  ctx.lineWidth = 5;
+  ctx.strokeRect(3, 3, W - 6, H - 6);
   ctx.strokeStyle = '#4a4a6a';
   ctx.lineWidth = 2;
-  ctx.strokeRect(8, 8, W - 16, H - 16);
+  ctx.strokeRect(7, 7, W - 14, H - 14);
+
+  // === Pixel character (top-left area) ===
+  const cx = 55, cy = 18;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(cx + 20, cy + 72, 36, 6);
+  // Body (dark outfit)
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(cx + 22, cy + 36, 32, 36);
+  // Legs
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(cx + 24, cy + 66, 10, 10);
+  ctx.fillRect(cx + 42, cy + 66, 10, 10);
+  // Arms
+  ctx.fillStyle = '#e8c0a0';
+  ctx.fillRect(cx + 12, cy + 40, 12, 6);
+  ctx.fillRect(cx + 52, cy + 40, 12, 6);
+  // Bass guitar (held diagonally)
+  ctx.fillStyle = '#d4882a';
+  ctx.fillRect(cx + 4, cy + 46, 8, 28);
+  ctx.fillRect(cx + 4, cy + 68, 18, 6);
+  ctx.fillStyle = '#f0b030';
+  ctx.fillRect(cx + 6, cy + 50, 4, 20);
+  // Bass neck
+  ctx.fillStyle = '#8b6914';
+  ctx.fillRect(cx + 12, cy + 30, 3, 48);
+  // Head
+  ctx.fillStyle = '#e8c0a0';
+  ctx.fillRect(cx + 26, cy + 18, 24, 20);
+  // Red hair
+  ctx.fillStyle = '#e04040';
+  ctx.fillRect(cx + 24, cy + 12, 28, 8);
+  ctx.fillRect(cx + 28, cy + 8, 20, 6);
+  ctx.fillRect(cx + 22, cy + 14, 4, 6);
+  ctx.fillRect(cx + 50, cy + 14, 4, 6);
+  // Blue scarf
+  ctx.fillStyle = '#4090d0';
+  ctx.fillRect(cx + 24, cy + 36, 28, 5);
+  ctx.fillRect(cx + 52, cy + 38, 12, 3);
+  // Eyes
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx + 32, cy + 24, 5, 4);
+  ctx.fillRect(cx + 40, cy + 24, 5, 4);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(cx + 34, cy + 25, 3, 3);
+  ctx.fillRect(cx + 42, cy + 25, 3, 3);
+
+  // XP++ floating text
+  ctx.fillStyle = '#58b868';
+  ctx.font = 'bold 16px "Press Start 2P", monospace';
+  ctx.fillText('XP++', cx + 20, cy);
+  // Tiny sparkles around XP
+  ctx.fillStyle = '#ffe040';
+  ctx.fillRect(cx + 16, cy - 4, 3, 3);
+  ctx.fillRect(cx + 58, cy - 6, 2, 2);
+  ctx.fillRect(cx + 10, cy + 4, 2, 2);
 
   // Title
   ctx.fillStyle = '#f0b030';
-  ctx.font = 'bold 18px "Press Start 2P", monospace';
+  ctx.font = 'bold 15px "Press Start 2P", monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('贝斯练习RPG', W/2, 42);
+  ctx.fillText('贝斯练习RPG', W/2 + 30, 42);
 
   // Date + duration
   ctx.fillStyle = '#e8e0d0';
-  ctx.font = '11px Silkscreen, monospace';
-  ctx.fillText(dateStr + '  |  ' + time + '分钟', W/2, 68);
+  ctx.font = '10px Silkscreen, monospace';
+  ctx.fillText(dateStr + '  |  ' + (time || '?') + 'min', W/2 + 30, 62);
 
   // Divider
   ctx.strokeStyle = '#4a4a6a';
   ctx.beginPath();
-  ctx.moveTo(30, 82); ctx.lineTo(W - 30, 82);
+  ctx.moveTo(30, 85); ctx.lineTo(W - 30, 85);
   ctx.stroke();
 
-  // Tags
+  // Tags + Mood
+  let headerY = 100;
   if (tags && tags.length > 0) {
     ctx.fillStyle = '#a09880';
-    ctx.font = '10px Silkscreen, monospace';
-    ctx.fillText(tags.join(' · '), W/2, 102);
+    ctx.font = '9px Silkscreen, monospace';
+    ctx.fillText(tags.join(' · '), W/2, headerY);
+    headerY += 16;
   }
-
-  // Mood
   if (mood) {
     ctx.fillStyle = '#e8e0d0';
-    ctx.font = '24px monospace';
-    ctx.fillText(mood, W/2, 128);
+    ctx.font = '20px monospace';
+    ctx.fillText(mood, W/2, headerY);
+    headerY += 24;
   }
 
-  // Branch XP
-  let y = 150;
+  // Branch XP bars
+  let y = headerY + 4;
   const branchOrder = ['jazz', 'pop', 'neon'];
   for (const branch of branchOrder) {
     const xpGained = xpGainedByBranch[branch] || {};
     const total = Object.values(xpGained).reduce((a, b) => a + b, 0);
     if (total === 0) continue;
     const rpg = rpgByBranch[branch];
-    const emoji = BRANCH_EMOJI[branch];
-    const label = BRANCH_LABELS[branch];
 
-    // Branch header
     ctx.fillStyle = '#f0b030';
     ctx.font = 'bold 10px Silkscreen, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(emoji + ' ' + label + '  +' + total + ' XP', 35, y);
+    ctx.fillText(BRANCH_EMOJI[branch] + ' ' + BRANCH_LABELS[branch] + '  +' + total + ' XP', 35, y);
+    y += 16;
 
-    // Level bars (compact)
-    y += 18;
     if (rpg) {
       for (const dim of ['tech','rhythm','ear','harmony','improv','repertoire']) {
         if (!xpGained[dim]) continue;
@@ -3704,45 +3761,66 @@ function drawShareCard(xpGainedByBranch, rpgByBranch, dateStr, time, tags, mood)
         const thresh = BRANCH_LEVEL_THRESHOLDS[branch];
         const nextT = thresh[level + 1] || thresh[thresh.length - 1];
         const prevT = thresh[level];
-        const pct = Math.round((xp - prevT) / (nextT - prevT) * 100);
-        const dimLabel = DIM_LABELS[dim].slice(0, 4);
-
+        const pct = nextT === Infinity ? 100 : Math.round((xp - prevT) / (nextT - prevT) * 100);
         ctx.fillStyle = '#a09880';
         ctx.font = '8px Silkscreen, monospace';
-        ctx.fillText(dimLabel, 40, y + 10);
-
-        // Bar bg
+        ctx.fillText(DIM_LABELS[dim].slice(0, 4), 40, y + 10);
         ctx.fillStyle = '#16213e';
-        ctx.fillRect(95, y + 2, 200, 10);
-        // Bar fill
+        ctx.fillRect(95, y + 3, 180, 8);
         ctx.fillStyle = '#58b868';
-        ctx.fillRect(95, y + 2, 200 * pct / 100, 10);
-
+        ctx.fillRect(95, y + 3, 180 * pct / 100, 8);
         ctx.fillStyle = '#f0b030';
-        ctx.fillText('+' + xpGained[dim] + ' XP  ' + lvlName, 300, y + 10);
-        y += 14;
+        ctx.fillText('+' + xpGained[dim] + '  ' + lvlName, 282, y + 10);
+        y += 13;
       }
     }
-    y += 10;
+    y += 8;
   }
+
+  // Divider
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.beginPath();
+  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
+  ctx.stroke();
+  y += 14;
+
+  // Encouragement based on mood + duration
+  const encouragements = {
+    ':D': ['状态火热！今天吉他之神附体了', '火力全开！手感滚烫的一天'],
+    ':)': ['稳扎稳打，离大师又近一步', '练习在悄悄积累，别停下'],
+    ':|': ['坚持就是胜利，每一步都算数', '平淡的日子才见真功夫'],
+    'x(': ['烦躁也能练下去，这是真正的自律', '今天的挣扎是明天的肌肉记忆'],
+    ':(': ['能坐下来就是勇士，会好起来的', '低谷之后就是上升，信我']
+  };
+  const timeTips = (time || 0) >= 60 ? '今天练得够久，记得休息手指！' : (time || 0) >= 30 ? '刚刚好，不多不少' : '短练也是练，贵在坚持';
+  const encList = encouragements[mood] || encouragements[':|'];
+  const enc = encList[Math.floor(Math.random() * encList.length)];
+
+  ctx.fillStyle = '#e8e0d0';
+  ctx.font = '10px Silkscreen, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(enc, W/2, y);
+  ctx.fillStyle = '#a09880';
+  ctx.font = '9px Silkscreen, monospace';
+  ctx.fillText(timeTips, W/2, y + 18);
 
   // Streak
   const data = loadCheckins();
   let streak = 0;
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
+  const dd = new Date();
+  dd.setHours(0, 0, 0, 0);
   while (true) {
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (data[ds]) { streak++; d.setDate(d.getDate() - 1); }
+    const ds = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
+    if (data[ds]) { streak++; dd.setDate(dd.getDate() - 1); }
     else break;
   }
 
-  // Footer
+  ctx.fillStyle = '#f0b030';
+  ctx.font = 'bold 12px Silkscreen, monospace';
+  ctx.fillText('连续打卡 ' + streak + ' 天', W/2, H - 36);
   ctx.fillStyle = '#4a4a6a';
-  ctx.font = '9px Silkscreen, monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('连续打卡 ' + streak + ' 天', W/2, H - 30);
-  ctx.fillText('basscyan.github.io/bass-practice-rpg', W/2, H - 14);
+  ctx.font = '8px Silkscreen, monospace';
+  ctx.fillText('贝斯练习RPG · 练琴游戏化', W/2, H - 20);
 }
 
 // ============================================================
