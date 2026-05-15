@@ -333,6 +333,30 @@
   .stat-num { font-size: 2em; font-weight: 800; color: var(--accent); }
   .stat-label { font-size: 0.8em; color: var(--text2); margin-top: 4px; }
 
+  /* Achievements */
+  .achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .achievement {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    padding: 12px 10px;
+    text-align: center;
+    opacity: 0.4;
+    transition: opacity 0.3s;
+  }
+  .achievement.unlocked {
+    opacity: 1;
+    border-color: var(--accent);
+    background: rgba(240,176,48,0.08);
+  }
+  .achievement-icon { font-size: 1.8em; margin-bottom: 6px; }
+  .achievement-name { font-family: var(--font-ui); font-size: 0.7em; color: var(--text); }
+  .achievement-desc { font-family: var(--font-ui); font-size: 0.55em; color: var(--text2); margin-top: 4px; }
+
 
   /* ===== Practice Plan ===== */
   .plan-section {
@@ -1210,9 +1234,6 @@
   <div class="nav-item" data-page="calendar">
     <span class="nav-icon">📅</span> 日历打卡
   </div>
-  <div class="nav-item" data-page="plan">
-    <span class="nav-icon">📖</span> 练琴计划
-  </div>
   <div class="nav-item" data-page="metronome">
     <span class="nav-icon">⏱️</span> 节拍器
   </div>
@@ -1268,6 +1289,8 @@
     </div>
     <h3>本月心情分布</h3>
     <div id="moodChart"></div>
+    <h3 style="margin-top:20px;">🏆 成就徽章</h3>
+    <div id="achievements" class="achievements-grid"></div>
   </div>
 
   <!-- CALENDAR PAGE -->
@@ -1292,17 +1315,6 @@
         <button class="btn btn-danger" id="btnDeleteDay">🗑 删除</button>
       </div>
     </div>
-  </div>
-
-  <!-- PLAN PAGE -->
-  <div class="page" id="page-plan">
-    <h2>📖 练琴计划</h2>
-    <div class="char-tabs" id="planBranchTabs" style="margin-bottom:16px;">
-      <button class="char-tab active" data-branch="jazz">🎺 爵士</button>
-      <button class="char-tab" data-branch="pop">🎸 流行</button>
-      <button class="char-tab" data-branch="neon">🎹 霓虹</button>
-    </div>
-    <div id="planSections"></div>
   </div>
 
   <!-- METRONOME PAGE -->
@@ -2066,6 +2078,79 @@ function updateStreak() {
 }
 
 // ============================================================
+// ACHIEVEMENTS
+// ============================================================
+const ACHIEVEMENTS = [
+  { id: 'first', icon: '🎸', name: '初次打卡', desc: '完成第一次练琴打卡', check: (data) => Object.keys(data).length >= 1 },
+  { id: 'streak3', icon: '🔥', name: '三天连续', desc: '连续打卡3天', check: (data) => getMaxStreak(data) >= 3 },
+  { id: 'streak7', icon: '🔥🔥', name: '一周坚持', desc: '连续打卡7天', check: (data) => getMaxStreak(data) >= 7 },
+  { id: 'streak30', icon: '👑', name: '月度王者', desc: '连续打卡30天', check: (data) => getMaxStreak(data) >= 30 },
+  { id: 'total100', icon: '⏱️', name: '百分钟', desc: '累计练琴100分钟', check: (data) => getTotalMin(data) >= 100 },
+  { id: 'total1000', icon: '⏰', name: '千分钟', desc: '累计练琴1000分钟', check: (data) => getTotalMin(data) >= 1000 },
+  { id: 'total5000', icon: '💎', name: '五千分钟', desc: '累计练琴5000分钟', check: (data) => getTotalMin(data) >= 5000 },
+  { id: 'level5', icon: '⭐', name: '小有成就', desc: '任一维度达到中级', check: () => hasMinLevel(3) },
+  { id: 'level7', icon: '🌟', name: '高手之路', desc: '任一维度达到高级', check: () => hasMinLevel(6) },
+  { id: 'allbranch', icon: '🎺🎸🎹', name: '三栖贝斯手', desc: '三个分支都有打卡记录', check: (data) => hasAllBranches(data) },
+];
+
+function getMaxStreak(data) {
+  const dates = Object.keys(data).sort();
+  let max = 0, current = 0;
+  for (let i = 0; i < dates.length; i++) {
+    if (i === 0) { current = 1; }
+    else {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+      current = diff === 1 ? current + 1 : 1;
+    }
+    max = Math.max(max, current);
+  }
+  return max;
+}
+
+function getTotalMin(data) {
+  return Object.values(data).reduce((sum, c) => sum + (c.time || 0), 0);
+}
+
+function hasMinLevel(minLevel) {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (!rpg) continue;
+    for (const dim of DIM_KEYS) {
+      if (getLevel(rpg.scores[dim] || 0, branch) >= minLevel) return true;
+    }
+  }
+  return false;
+}
+
+function hasAllBranches(data) {
+  const branches = new Set();
+  Object.values(data).forEach(c => {
+    if (c.xpGainedByBranch) {
+      Object.keys(c.xpGainedByBranch).forEach(b => {
+        const total = Object.values(c.xpGainedByBranch[b]).reduce((a, v) => a + v, 0);
+        if (total > 0) branches.add(b);
+      });
+    }
+  });
+  return branches.size >= 3;
+}
+
+function renderAchievements(data) {
+  const container = document.getElementById('achievements');
+  if (!container) return;
+  container.innerHTML = ACHIEVEMENTS.map(a => {
+    const unlocked = a.check(data);
+    return `<div class="achievement ${unlocked ? 'unlocked' : ''}">
+      <div class="achievement-icon">${a.icon}</div>
+      <div class="achievement-name">${a.name}</div>
+      <div class="achievement-desc">${a.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
 // STATS
 // ============================================================
 function renderStats() {
@@ -2090,6 +2175,8 @@ function renderStats() {
       : `<p style="color:var(--text2);margin-top:10px;">本月已打卡 ${totalDays} 天，共 ${totalMin} 分钟</p>`;
   }
 
+  renderAchievements(data);
+
   updateStreak();
   setTimeout(() => renderRpgPanel(loadMeta().activeBranch), 0);
 }
@@ -2112,665 +2199,6 @@ document.getElementById('btnNextMonth').addEventListener('click', () => {
   document.getElementById('dayDetail').classList.remove('show');
   renderCalendar();
 });
-
-// ============================================================
-// PRACTICE PLAN CONTENT
-// ============================================================
-const BRANCH_PLAN_DATA = { jazz: [
-  {
-    title: '1. Walking Bass 四步构建法',
-    body: `
-<div class="highlight-box"><strong>铁律：</strong>每小节4个四分音符，第1拍弹根音，第4拍是走向下一小节的桥。</div>
-
-<h3>第一层：纯根音 + 第4拍半音趋近</h3>
-<p>以 F Blues 前4小节为例：<code>F7 | Bb7 | F7 | F7</code></p>
-<p>走法：<code>F→Ab→A→Bb</code> | <code>Bb→B→C→F</code> | <code>F→Ab→A→Bb</code> | <code>F→Ab→A→Bb</code></p>
-<p>第1拍是当前和弦根音，第4拍是下个和弦根音上方/下方的半音。</p>
-
-<h3>第二层：加入和弦音（3、5、7）</h3>
-<p>F7 和弦音 = F A C Eb，第2、3拍替换成这些：</p>
-<ul><li><code>F → A → C → (趋近Bb)</code></li><li><code>F → C → Eb → (趋近Bb)</code></li></ul>
-
-<h3>第三层：经过音与包围音</h3>
-<p>包围音 = 上方半音 → 下方半音 → 目标音</p>
-<p>例如 <code>F → C → Db→B→C</code>，后半拍包围三音再解决。</p>
-
-<h3>第四层：旋律线思维</h3>
-<ul><li>相邻小节最高音不跳超过五度</li><li>线要有方向：上行两小节→下行两小节</li><li>偶尔重复同一音制造呼吸感</li></ul>
-
-<table>
-<tr><th>原则</th><th>说明</th></tr>
-<tr><td>第1拍=根音</td><td>90%的情况如此</td></tr>
-<tr><td>第4拍=连接</td><td>半音/全音/属七音连接到下个根音</td></tr>
-<tr><td>线性运动</td><td>尽量级进，少跳进</td></tr>
-<tr><td>音域</td><td>E弦到G弦第7品之间</td></tr>
-</table>`
-  },
-  {
-    title: '2. 和弦进行速查',
-    body: `
-<div class="highlight-box">以下示例均以 <strong>C 调</strong> 为例。移到其他调时，所有和弦同步平移（如移 D 调：Dm7→G7→Cmaj7 变成 Em7→A7→Dmaj7）。</div>
-
-<h3>(1) ii-V-I 大调</h3>
-<p><code>| Dm7 | G7 | Cmaj7 | Cmaj7 |</code></p>
-<p>贝斯根音：D → G → C，先刻进手指。</p>
-
-<h3>(2) ii-V-I 小调</h3>
-<p><code>| Dm7b5 | G7b9 | Cm7 | Cm7 |</code></p>
-
-<h3>(3) Blues 进行（F调）</h3>
-<p><code>| F7 | Bb7 | F7 | Cm7 F7 |</code></p>
-<p><code>| Bb7 | Bdim | F7 | Am7 D7 |</code></p>
-<p><code>| Gm7 | C7 | F7 D7 | Gm7 C7 |</code></p>
-<p>关键：第4小节 Cm7→F7 是走向Bb7的ii-V；最后两小节是 I-VI-ii-V。</p>
-
-<h3>拿到谱子先做的事</h3>
-<ol><li>用笔圈出所有 ii-V-I</li><li>标出每段终止式（Turnaround）</li><li>写出调性中心</li></ol>
-<p><strong>不要看一个小节弹一个小节，要看出"这几小节是一个ii-V-I组"。</strong></p>`
-  },
-  {
-    title: '3. 音阶编排',
-    body: `
-<h3>第一优先：和弦琶音（Arpeggios）</h3>
-<table>
-<tr><th>和弦类型</th><th>构成</th><th>示例（C）</th></tr>
-<tr><td>Maj7</td><td>1 3 5 7</td><td>I III V VII（C调：C E G B）</td></tr>
-<tr><td>Dom7</td><td>1 3 5 b7</td><td>I III V bVII（C调：C E G Bb）</td></tr>
-<tr><td>m7</td><td>1 b3 5 b7</td><td>I bIII V bVII（C调：C Eb G Bb）</td></tr>
-<tr><td>m7b5</td><td>1 b3 b5 b7</td><td>I bIII bV bVII（C调：C Eb Gb Bb）</td></tr>
-<tr><td>Dim7</td><td>1 b3 b5 bb7</td><td>I bIII bV bbVII（C调：C Eb Gb A）</td></tr>
-</table>
-<p><strong>练习法：</strong>按五度圈练，每个调弹一个八度，节拍器开在2、4拍。</p>
-
-<h3>第二优先：Mixolydian（属七音阶）</h3>
-<p>大调音阶降7音：<code>1 2 3 4 5 6 b7</code>（C调：C D E F G A Bb）</p>
-
-<h3>第三优先：Dorian（小七音阶）</h3>
-<p>自然小调升6音：<code>1 2 b3 4 5 6 b7</code>（D调：D E F G A B C）</p>
-
-<h3>指板记忆三法</h3>
-<ul>
-<li><strong>根音定位法：</strong>记熟根音在E/A弦的位置，其他音用相对位置推</li>
-<li><strong>八度框架法：</strong>隔一弦+2品 = 八度</li>
-<li><strong>四度关系法：</strong>相邻弦同品 = 纯四度，跨一品 = 增四度</li>
-</ul>`
-  },
-  {
-    title: '4. 即兴思路',
-    body: `
-<div class="highlight-box">即兴不是"想到什么弹什么"。下限是<strong>和弦音+节奏动机</strong>，不是音阶乱跑。</div>
-
-<h3>五步即兴框架</h3>
-<ol>
-<li><strong>锚点分析：</strong>每小节第1、3拍标出和弦根音和三音/七音——这些拍点上必须弹出和弦色彩音</li>
-<li><strong>节奏动机：</strong>选一个短节奏型（2-4个音），整段solo靠它变化。<em>听众记住的是节奏，不是音阶。</em></li>
-<li><strong>限制音符：</strong>前4小节只用根音和三音，第5-8小节加入五音七音，逐步放开</li>
-<li><strong>问答造句：</strong>弹短句→留空→变化重复。前句上→后句下，前句密→后句疏</li>
-<li><strong>目标音导向：</strong>每4小节想好最后落在哪个音，往前倒推</li>
-</ol>
-
-<h3>最实用的起步练习</h3>
-<p>在Blues上solo，<strong>全程只用F小调五声音阶（F Ab Bb C Eb），但每个Chorus换一种节奏动机。</strong></p>
-<p>你会发现：不需要换音阶，光换节奏就已经听起来完全不一样了。</p>`
-  },
-  {
-    title: '5. 乐句拆解',
-    body: `
-<h3>扒谱推荐（由易到难）</h3>
-<ol>
-<li><strong>Paul Chambers</strong>——最清晰的Walking，每个音都像教科书</li>
-<li><strong>Ray Brown</strong>——律动感无与伦比，学他的时值和重音</li>
-<li><strong>Ron Carter</strong>——旋律线最美，学他的半音运用</li>
-<li><strong>Sam Jones</strong>——solo句子短而有力</li>
-</ol>
-
-<h3>一句乐句的七步改造法</h3>
-<ol>
-<li>原样扒下来→写到纸上</li>
-<li>标出和弦音（R/3/5/7）</li>
-<li>找出动机（核心节奏型+核心音程）</li>
-<li>移到11个其他调</li>
-<li>改节奏（保留音，换节奏型）</li>
-<li>改音（保留节奏型，换音）</li>
-<li>嵌入你的solo</li>
-</ol>
-
-<div class="highlight-box">一年认真扒10句，比泛泛听100首管用十倍。</div>
-
-<h3>常用爵士贝斯词汇</h3>
-<table>
-<tr><th>词汇</th><th>描述</th><th>适用位置</th></tr>
-<tr><td>半音趋近</td><td>上方/下方半音滑入目标音</td><td>第4拍</td></tr>
-<tr><td>双半音包围</td><td>上下半音→目标音</td><td>段落结尾</td></tr>
-<tr><td>八度跳</td><td>同一音高低八度交替</td><td>制造空间感</td></tr>
-<tr><td>三连音run</td><td>连续三连音上行/下行</td><td>Solo高潮</td></tr>
-<tr><td>五度循环模进</td><td>按五度圈移位短句</td><td>Turnaround</td></tr>
-</table>`
-  },
-  {
-    title: '6. 系统练习规划（三个月）',
-    body: `
-<h3>第一阶段（第1-4周）：打地基</h3>
-<p><strong>目标：</strong>在F调Blues上走出稳定好听的Walking Bass</p>
-<ul>
-<li>熟记 F7/Bb7/C7/Dm7/Gm7 琶音（E/A弦两个把位）</li>
-<li>学会"根音+半音趋近"走完整首Blues</li>
-<li>节拍器60bpm，开2、4拍</li>
-<li>开始扒第一句Paul Chambers乐句</li>
-</ul>
-
-<h3>第二阶段（第5-8周）：扩展词汇</h3>
-<p><strong>目标：</strong>F调Blues + Bb调Rhythm Changes自如Walking</p>
-<ul>
-<li>加入三音、五音、七音</li>
-<li>学会Dorian和Mixolydian在Walking里用</li>
-<li>扒完第一句乐句并移完12调</li>
-<li>学习小调ii-V-I</li>
-</ul>
-
-<h3>第三阶段（第9-12周）：加入即兴</h3>
-<p><strong>目标：</strong>在Blues上即兴solo两个Chorus</p>
-<ul>
-<li>用"限制音符法"练习solo</li>
-<li>学会用节奏动机发展句子</li>
-<li>扒第二句乐句</li>
-<li>开始接触Real Book：Autumn Leaves, Blue Bossa</li>
-</ul>
-
-<h3>推荐练习曲目顺序</h3>
-<ol>
-<li>F Blues</li>
-<li>Bb Blues</li>
-<li>Autumn Leaves</li>
-<li>Blue Bossa</li>
-<li>All of Me</li>
-<li>Take the A Train</li>
-<li>So What</li>
-<li>Oleo (Rhythm Changes)</li>
-</ol>`
-  },
-  {
-    title: '7. 每日练琴安排',
-    body: `
-<h3>60分钟版（工作日）</h3>
-<table>
-<tr><th>时间</th><th>内容</th><th>说明</th></tr>
-<tr><td>0-5 min</td><td>热身</td><td>半音阶上下行，慢速，注意力在放松</td></tr>
-<tr><td>5-15 min</td><td>技术练习</td><td>琶音/音阶，节拍器2、4拍，60-80bpm</td></tr>
-<tr><td>15-25 min</td><td>Walking练习</td><td>一首曲子，先纯根音走，再逐渐加和弦音</td></tr>
-<tr><td>25-40 min</td><td>乐句/扒谱</td><td>练习新乐句或复习已扒的，移调</td></tr>
-<tr><td>40-55 min</td><td>即兴练习</td><td>在Blues或Autumn Leaves上solo</td></tr>
-<tr><td>55-60 min</td><td>自由玩</td><td>放伴奏，抛开规则，纯凭耳朵弹</td></tr>
-</table>
-
-<h3>120分钟版（周末）</h3>
-<table>
-<tr><th>时间</th><th>内容</th></tr>
-<tr><td>0-10 min</td><td>热身 + 手指独立性练习</td></tr>
-<tr><td>10-25 min</td><td>琶音练习（12个调轮转）</td></tr>
-<tr><td>25-45 min</td><td>Walking Bass——同一首歌至少4种走法</td></tr>
-<tr><td>45-65 min</td><td>新乐句扒谱 + 分析 + 移调</td></tr>
-<tr><td>65-85 min</td><td>即兴solo——录下来，回听，标记不满意的地方</td></tr>
-<tr><td>85-110 min</td><td>跟伴奏完整演奏（Walking + Solo + Walking out）</td></tr>
-<tr><td>110-120 min</td><td>听录音 + 笔记</td></tr>
-</table>
-
-<h3>每周主题</h3>
-<table>
-<tr><th>星期</th><th>主题</th><th>重点</th></tr>
-<tr><td>周一</td><td>琶音日</td><td>一个调的所有和弦琶音，两个把位</td></tr>
-<tr><td>周二</td><td>Walking日</td><td>一首新曲子，根音→加和弦音</td></tr>
-<tr><td>周三</td><td>乐句日</td><td>扒/练一句新乐句，分析→移调→改装</td></tr>
-<tr><td>周四</td><td>即兴日</td><td>限制音符法，在Blues上solo</td></tr>
-<tr><td>周五</td><td>和声日</td><td>分析和弦进行，听辨ii-V-I</td></tr>
-<tr><td>周六</td><td>综合日</td><td>完整练习流程 + 录音回听</td></tr>
-<tr><td>周日</td><td>自由日</td><td>放伴奏随意弹，或休息</td></tr>
-</table>
-
-<div class="highlight-box"><strong>节拍器永远开在2、4拍。</strong>这是爵士贝斯手的第一条戒律。<br>
-<strong>每次练琴录音。</strong>你弹的时候觉得还行，回听全是问题——这就是进步空间。<br>
-<strong>慢就是快。</strong>60bpm走稳了，提速自然；100bpm走得稀碎，永远不稳。</div>`
-  },
-  {
-    title: '8. 爵士曲目自测表（你能弹几首？）',
-    body: `
-<div class="highlight-box">打勾你能<strong>不看谱完整弹下来</strong>的曲子。会Walking Bass + 能Solo一段才算"能弹"。</div>
-
-<h3>🥉 初级 — 会这些，你入门了</h3>
-<table>
-<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
-<tr><td>☐</td><td>F Blues</td><td>12小节Blues，最基础Walking</td></tr>
-<tr><td>☐</td><td>Bb Blues</td><td>另一个常用Blues调</td></tr>
-<tr><td>☐</td><td>Autumn Leaves</td><td>ii-V-I 大小调切换经典</td></tr>
-<tr><td>☐</td><td>Blue Bossa</td><td>拉丁节奏+小调ii-V-I</td></tr>
-<tr><td>☐</td><td>So What</td><td>两和弦Modal，空间感</td></tr>
-</table>
-<p style="color:var(--text2);">→ 勾满 5 首：初级 III，可以开始接触中级曲目</p>
-
-<h3>🥈 中级 — 能弹这些，可以跟Jam了</h3>
-<table>
-<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
-<tr><td>☐</td><td>All of Me</td><td>中速Swing，和弦密集</td></tr>
-<tr><td>☐</td><td>Take the A Train</td><td>快节奏Swing，II-V-I串联</td></tr>
-<tr><td>☐</td><td>All The Things You Are</td><td>多次转调，和声分析大考</td></tr>
-<tr><td>☐</td><td>Oleo</td><td>Rhythm Changes，极快</td></tr>
-<tr><td>☐</td><td>Beautiful Love</td><td>小调经典，和声色彩丰富</td></tr>
-<tr><td>☐</td><td>There Will Never Be Another You</td><td>标准Swing，中速</td></tr>
-<tr><td>☐</td><td>Green Dolphin Street</td><td>拉丁+Swing切换</td></tr>
-</table>
-<p style="color:var(--text2);">→ 勾满 5 首以上：中级水平，你可以在大部分Jam Session里撑住</p>
-
-<h3>🥇 高级 — 拿下这些，你已经很强了</h3>
-<table>
-<tr><th>✓</th><th>曲目</th><th>关键点</th></tr>
-<tr><td>☐</td><td>Giant Steps</td><td>急速转调，Coltrane Changes</td></tr>
-<tr><td>☐</td><td>Moment's Notice</td><td>同上，旋律+和声密度极高</td></tr>
-<tr><td>☐</td><td>Stella By Starlight</td><td>复杂和声，Solo需要深厚功底</td></tr>
-<tr><td>☐</td><td>Round Midnight</td><td>慢速Ballad，最难弹好</td></tr>
-<tr><td>☐</td><td>Donna Lee</td><td>Bebop极速曲，手指+脑力双重考验</td></tr>
-</table>
-<p style="color:var(--text2);">→ 勾满 3 首：高级水平，你已经超过了大多数业余贝斯手</p>
-
-<div class="highlight-box">不是听过、弹过片段就算。<strong>能从头到尾、跟伴奏、不看谱、不出大错</strong>，才算打勾。</div>`
-  }
-],
-
-pop: [
-  {
-    title: '1. 流行贝斯核心节奏型',
-    body: `
-<div class="highlight-box"><strong>流行贝斯的第一原则：</strong>锁住底鼓（Kick Drum），你就是节奏组的基石。根音+五度的律动可以撑起90%的流行歌。</div>
-
-<h3>十大常见节奏型</h3>
-<table>
-<tr><th>节奏型</th><th>描述</th><th>示例歌曲</th></tr>
-<tr><td>Root-5th 八分</td><td>根音→五度，八分音符交替</td><td>U2 - With or Without You</td></tr>
-<tr><td>Root-5th 附点</td><td>根音长，五度短，附点感</td><td>Maroon 5 - Sugar</td></tr>
-<tr><td>Root-3-5 上行</td><td>根音→三音→五度，每拍一个</td><td>Beatles - Let It Be</td></tr>
-<tr><td>Root-Root-5-5</td><td>两拍根音两拍五度</td><td>Taylor Swift - Shake It Off</td></tr>
-<tr><td>Root-5-6-b7</td><td>加六音和降七音过渡</td><td>Bruno Mars - Uptown Funk</td></tr>
-<tr><td>全八分驱动</td><td>每拍根音/五度不间断</td><td>Green Day - American Idiot</td></tr>
-<tr><td>切分R&B</td><td>重拍落在反拍</td><td>Justin Timberlake - SexyBack</td></tr>
-<tr><td>Slap 根基</td><td>拇指根音+食指五度</td><td>Jamiroquai - Cosmic Girl</td></tr>
-<tr><td>流动根音</td><td>根音+经过音，像Walking但简</td><td>Beatles - Something</td></tr>
-<tr><td>全休止留白</td><td>只在关键拍弹</td><td>Billie Eilish - bad guy</td></tr>
-</table>
-
-<h3>练习方法</h3>
-<ul><li>和底鼓一起弹：放原曲，只弹底鼓拍</li><li>节拍器开2、4拍（跟爵士一样重要！）</li><li>录音对比：弹完和原曲叠在一起听</li></ul>`
-  },
-  {
-    title: '2. 流行和声进行速查',
-    body: `
-<h3>四大万能进行</h3>
-<table>
-<tr><th>进行</th><th>公式</th><th>代表曲</th></tr>
-<tr><td>I - V - vi - IV</td><td>C - G - Am - F</td><td>Let It Be, Don't Stop Believin'</td></tr>
-<tr><td>vi - IV - I - V</td><td>Am - F - C - G</td><td>Hello, Numb</td></tr>
-<tr><td>I - IV - vi - V</td><td>C - F - Am - G</td><td>Perfect, Count On Me</td></tr>
-<tr><td>ii - V - I</td><td>Dm - G - C</td><td>Sunday Morning, Autumn Leaves</td></tr>
-</table>
-
-<h3>和声简化技巧</h3>
-<p>遇到复杂和弦直接看根音！流行贝斯很多时候弹根音就够了：</p>
-<ul><li>Gsus4 → 弹 G</li><li>Cadd9 → 弹 C</li><li>Am7/G → 弹 G（注意 Slash Chord 弹最低音）</li><li>F/A → 弹 A</li></ul>
-
-<h3>Nashville 数字系统</h3>
-<p>用 1-7 代替音名，方便移调沟通：</p>
-<p>C调：1=C, 2m=Dm, 3m=Em, 4=F, 5=G, 6m=Am, 7dim=Bdim</p>
-<p>职业棚虫的通用语言，必须会！</p>`
-  },
-  {
-    title: '3. 流行贝斯音色与技巧',
-    body: `
-<h3>基本音色塑造</h3>
-<ul>
-<li><strong>指弹 (Fingerstyle)：</strong>最常用，圆润温暖，适合抒情、R&B。手指拨弦时稍微靠前（靠近琴颈拾音器）获得更圆的声音。</li>
-<li><strong>拨片 (Pick)：</strong>攻击感强，适合摇滚、朋克。用较厚的拨片（≥1.0mm）减少刮弦声。</li>
-<li><strong>闷音 (Palm Mute)：</strong>手掌根部轻触琴桥，音头变短。60-70年代老摇滚的根基音色。</li>
-<li><strong>Ghost Note：</strong>左手虚按，右手正常拨，发出"嗒嗒"闷音。Funk/R&B必备。</li>
-</ul>
-
-<h3>常用效果器</h3>
-<ul><li>压缩 (Compressor) — 让每个音音量均匀，流行贝斯几乎必开</li><li>EQ — 低频60-100Hz加厚，中高频2-4kHz加清晰度</li><li>过载 (Overdrive) — 轻微过载让贝斯在混音中"站"出来</li><li>合唱 (Chorus) — 80年代流行味</li></ul>
-
-<h3>Slap 基础</h3>
-<p>拇指击弦（Thumb）+ 食指勾弦（Pop）构成最基本 slap 语汇。练习：慢速八分音符，拇指弹E/A弦根音+五度，食指勾D/G弦。从60bpm开始。</p>`
-  },
-  {
-    title: '4. 流行扒谱方法',
-    body: `
-<h3>在密集混音中找到贝斯</h3>
-<ol>
-<li>用耳机听 — 音箱低频混在一起，分离度差</li>
-<li>EQ 技巧：把 60-200Hz 拉高，中高频拉低，贝斯线会浮出来</li>
-<li>先找和弦根音，再补充节奏型</li>
-<li>用软件降速（YouTube 0.75x / Audacity / Transcribe!）</li>
-<li>写出根音→写出节奏→写出加花</li>
-</ol>
-
-<h3>扒谱推荐顺序（由易到难）</h3>
-<ol>
-<li>The Beatles — 最简单的根音+五度，Paul McCartney 是最好的流行贝斯老师</li>
-<li>Michael Jackson — Billie Jean、Beat It，节奏精准度极高</li>
-<li>Dua Lipa — Don't Start Now，现代 Disco/Funk 贝斯典范</li>
-<li>Bruno Mars — Uptown Funk、Leave The Door Open，当代 R&B 贝斯</li>
-<li>Jamiroquai — 进阶 slap 和复杂和声</li>
-</ol>
-
-<div class="highlight-box">一首歌扒下来，不仅要知道弹什么音，更要知道<strong>为什么</strong>弹那个音——和弦是什么？那个音在几音位置？这是提升乐理的唯一捷径。</div>`
-  },
-  {
-    title: '5. 曲目分级推荐',
-    body: `
-<h3>Tier 1 - 根音弹稳（初级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>Beatles - Let It Be</td><td>四分音符根音+简单五度</td></tr>
-<tr><td>U2 - With or Without You</td><td>八分音符Root-5th循环，练习耐力</td></tr>
-<tr><td>Billie Eilish - bad guy</td><td>极简，空间感控制</td></tr>
-<tr><td>Coldplay - Yellow</td><td>根音+开放弦，音色控制</td></tr>
-<tr><td>Ed Sheeran - Perfect</td><td>I-IV-vi-V万能进行</td></tr>
-</table>
-
-<h3>Tier 2 - 律动感（中级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>Michael Jackson - Billie Jean</td><td>八分音符切分，节奏精准</td></tr>
-<tr><td>Bruno Mars - Uptown Funk</td><td>Root-5-6-b7 加 ghost note</td></tr>
-<tr><td>Daft Punk - Get Lucky</td><td>Disco Octave，八度跳</td></tr>
-<tr><td>Tame Impala - The Less I Know</td><td>流动根音+经过音</td></tr>
-<tr><td>Maroon 5 - This Love</td><td>R&B 节奏感+休止符运用</td></tr>
-</table>
-
-<h3>Tier 3 - 进阶（高级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>Jamiroquai - Runaway</td><td>Slap + 复杂和声，多段变化</td></tr>
-<tr><td>Dua Lipa - Don't Start Now</td><td>现代 Disco bass fill，16分填充</td></tr>
-<tr><td>Vulfpeck - Dean Town</td><td>纯器乐，16分驱动，手速+耐力</td></tr>
-<tr><td>Thundercat - Them Changes</td><td>现代 Neo-Soul 贝斯，和声新颖</td></tr>
-<tr><td>Muse - Hysteria</td><td>拨片16分Riff，手耐力极限训练</td></tr>
-</table>`
-  },
-  {
-    title: '6. 每日练习安排',
-    body: `
-<h3>60分钟版（工作日）</h3>
-<table>
-<tr><th>时间</th><th>内容</th></tr>
-<tr><td>0-5 min</td><td>左手指力热身（半音阶+跨弦）</td></tr>
-<tr><td>5-15 min</td><td>音阶+琶音练习（选当天调的万能和弦进行）</td></tr>
-<tr><td>15-30 min</td><td>扒谱/练曲（跟原曲弹，注意锁底鼓）</td></tr>
-<tr><td>30-45 min</td><td>节奏专项（节拍器开2、4拍，练切分/Ghost Note）</td></tr>
-<tr><td>45-55 min</td><td>Slap / 技巧专项（可选）</td></tr>
-<tr><td>55-60 min</td><td>自由跟歌弹，录一段听回放</td></tr>
-</table>
-
-<h3>120分钟版（周末）</h3>
-<table>
-<tr><th>时间</th><th>内容</th></tr>
-<tr><td>0-10 min</td><td>热身+右手交替拨弦/拨片基础</td></tr>
-<tr><td>10-25 min</td><td>音阶琶音（12调轮转，选4个调）</td></tr>
-<tr><td>25-50 min</td><td>扒一首新歌，写出完整贝斯谱</td></tr>
-<tr><td>50-75 min</td><td>节奏感强化（16分+切分+反拍专项）</td></tr>
-<tr><td>75-95 min</td><td>技术难点突破（Slap/快速拨片选一）</td></tr>
-<tr><td>95-120 min</td><td>完整跟歌弹奏+录音+自评笔记</td></tr>
-</table>
-
-<div class="highlight-box"><strong>流行贝斯和爵士不同：</strong>爵士重点在即兴造句，流行重点在<strong>稳和Groove</strong>。你一乱，整首歌就散了。节拍器是你最好的朋友。<br><strong>听底鼓！听底鼓！听底鼓！</strong>你在乐队里和鼓手锁在一起，其他乐器才能飞。</div>`
-  }
-],
-
-neon: [
-  {
-    title: '1. 霓虹贝斯核心特质',
-    body: `
-<div class="highlight-box"><strong>霓虹贝斯 = J-Pop/J-Rock/Anime Song 的高密度贝斯编配。</strong>核心是音符密度高、节奏复杂、技巧花哨，但始终服务于歌曲。</div>
-
-<h3>霓虹贝斯与传统贝斯的区别</h3>
-<table>
-<tr><th>维度</th><th>传统流行/摇滚</th><th>霓虹贝斯</th></tr>
-<tr><td>音符密度</td><td>八分/四分为主</td><td>十六分音符大量使用</td></tr>
-<tr><td>技巧</td><td>指弹/拨片基础</td><td>快速拨片/三指/点弦/Slap融合</td></tr>
-<tr><td>节奏</td><td>正拍驱动</td><td>大量切分、反拍、三连音</td></tr>
-<tr><td>加花</td><td>小节间偶尔加</td><td>频繁加花（Fill），几乎每4-8小节就有</td></tr>
-<tr><td>和声复杂度</td><td>三和弦/七和弦为主</td><td>大量转调/借用和弦/半音经过</td></tr>
-<tr><td>代表贝斯手</td><td>Paul McCartney, Pino Palladino</td><td>Jino (ZUTOMAYO), Kensuke (Ling Tosite Sigure)</td></tr>
-</table>
-
-<h3>核心技能树</h3>
-<ul>
-<li><strong>快速拨片/三指：</strong>16分音符160bpm+稳定输出</li>
-<li><strong>弦跳 (String Skipping)：</strong>快速在三根弦之间跳跃不减速</li>
-<li><strong>节奏密度：</strong>能在16分网格中精确放置每一个音</li>
-<li><strong>加花意识：</strong>知道什么时候加花、加多少、怎么收回来</li>
-<li><strong>和声敏感：</strong>J-Pop 转调频繁，需要快速识别调性变化</li></ul>`
-  },
-  {
-    title: '2. 霓虹风格和声进行',
-    body: `
-<h3>J-Pop/J-Rock 特色进行</h3>
-
-<h3>(1) Royal Road 王道进行</h3>
-<p><code>IVM7 → V7 → iii7 → vi7</code></p>
-<p>C调：Fmaj7 → G7 → Em7 → Am7</p>
-<p>这就是"J-Pop音效"的来源。在无数动漫OP/ED中出现。</p>
-
-<h3>(2) Just The Two Of Us 进行（小室进行）</h3>
-<p><code>IVM7 → V7 → I → VIm7</code></p>
-<p>90年代小室哲哉系必用。C调：Fmaj7 → G7 → C → Am7</p>
-
-<h3>(3) 半音上升进行</h3>
-<p><code>| Fmaj7 | F#dim | G7 | G#dim | Am7 |</code></p>
-<p>半音贝斯线上行，制造紧张→解决。椎名林檎/东京事变常用。</p>
-
-<h3>(4) 转调进行（副歌升Key）</h3>
-<p>许多J-Pop副歌会突然升一个全音或小三度。贝斯手需要在转调瞬间找到新调的根音。</p>
-<p>例：主歌 C 调 → 副歌 Eb 调</p>
-<p><strong>练习：</strong>听到升Key立刻在指板上找新调的 I-IV-V 位置。</p>
-
-<h3>(5) 变拍号（Math Rock 系）</h3>
-<p>Ling Tosite Sigure / 凛として時雨 以复杂拍号闻名：5/4、7/8、交替拍号。</p>
-<p>贝斯手需要能跟着奇数拍稳稳走根音，不被绊倒。</p>`
-  },
-  {
-    title: '3. 高难度技巧专项',
-    body: `
-<h3>快速交替拨片（Alternate Picking）</h3>
-<p>目标：16分音符180bpm，连续4小节不减速。</p>
-<p>练习法：节拍器开60，弹16分（=每拍4个音），逐步提速。注意手腕放松，上拨和下拨音量要均匀。</p>
-
-<h3>三指轮拨（Three-Finger Plucking）</h3>
-<p>食指→中指→无名指循环。比两指快50%。Bryan Beller 和 Billy Sheehan 的招牌。</p>
-<p>练习：先在开放弦上练三指循环，速度上来后加入跨弦。</p>
-
-<h3>弦跳（String Skipping）</h3>
-<p>E弦→D弦，跳过A弦。手要精准落在目标弦不碰到中间弦。</p>
-<p>练习：E-D-A-D-E-A-D-E... 逐渐加速。先在60bpm八分音符开始。</p>
-
-<h3>复合技巧（Slap + Pick + Tap）</h3>
-<p>一些霓虹贝斯手（如Jino）会在一段乐句中混合多种技巧：</p>
-<ul><li>前半句拨片→中间转为Slap→高潮用点弦</li></ul>
-<p>练习：每种技巧分开练到熟练，再尝试2小节拨片+2小节Slap切换。</p>
-
-<h3>速度递进训练表</h3>
-<table>
-<tr><th>阶段</th><th>目标速度</th><th>练习内容</th></tr>
-<tr><td>1</td><td>16分 @ 80bpm</td><td>单弦交替拨片，连续2小节</td></tr>
-<tr><td>2</td><td>16分 @ 100bpm</td><td>跨2根弦交替拨片</td></tr>
-<tr><td>3</td><td>16分 @ 120bpm</td><td>跨3根弦+三指轮拨</td></tr>
-<tr><td>4</td><td>16分 @ 140bpm</td><td>三连音跨弦，加左手快速换把</td></tr>
-<tr><td>5</td><td>16分 @ 160bpm</td><td>完整16分段落，加力度变化</td></tr>
-<tr><td>6</td><td>16分 @ 180bpm+</td><td>霓虹贝斯手标准速度</td></tr>
-</table>`
-  },
-  {
-    title: '4. 霓虹风格扒谱',
-    body: `
-<h3>日系音乐的扒谱特点</h3>
-<ul>
-<li><strong>混音密集：</strong>J-Pop 编曲层次极多（弦乐/合成器/双吉他/和声），贝斯容易被埋。需要学会"听穿混音"。</li>
-<li><strong>贝斯编配华丽：</strong>加花频繁，不从一而终。同一个副歌第二遍的贝斯可能和第一遍完全不同。</li>
-<li><strong>音色多变：</strong>同一首歌可能用多种音色（清音→过载→Slap→Pick），需要耳朵能分辨。</li>
-</ul>
-
-<h3>推荐扒谱工具</h3>
-<ol>
-<li>YouTube 0.5x/0.75x 速度 — 免费，够用</li>
-<li>Moose（iOS/Android）— 精确降速+EQ+循环，手机扒歌神器</li>
-<li>Transcribe!（PC/Mac）— 专业级，可单独提升低频</li>
-<li>Moises.ai — AI 分轨，可以把贝斯轨道单独提取（有时不准但有用）</li>
-</ol>
-
-<h3>扒谱推荐贝斯手（由易到难）</h3>
-<ol>
-<li><strong>亀田誠治 (Seiji Kameda)</strong> — 东京事变/椎名林檎制作人，贝斯编配教科书级别</li>
-<li><strong>Jino (ジノ)</strong> — ZUTOMAYO，当代霓虹贝斯技术天花板</li>
-<li><strong>Kensuke (345/凛として時雨)</strong> — Math Rock/Post-Hardcore 贝斯，拍号变化多</li>
-<li><strong>Misa (BAND-MAID)</strong> — 女贝斯手，硬摇滚+技术流</li>
-<li><strong>Natsuki (Sokoninaru)</strong> — 三人乐队，贝斯同时承担节奏和旋律</li>
-</ol>
-
-<div class="highlight-box"><strong>扒完一首歌后一定要分析：</strong>贝斯在每段做了什么？Intro怎么进？A段为什么简单？副歌为什么突然密集？间奏solo用了什么音阶？理解了编曲意图才算真的扒完。</div>`
-  },
-  {
-    title: '5. 曲目分级推荐',
-    body: `
-<h3>Tier 1 - 入门霓虹（初级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>YOASOBI - 夜に駆ける</td><td>八分根音+五度，和声清晰，节奏快但音符简单</td></tr>
-<tr><td>King Gnu - 白日</td><td>情绪起伏大，贝斯安静→爆发段跟随</td></tr>
-<tr><td>Official髭男dism - Pretender</td><td>流行J-Pop贝斯，根音+简单加花</td></tr>
-<tr><td>米津玄師 - Lemon</td><td>慢歌，贝斯编得很美，学习留白</td></tr>
-</table>
-
-<h3>Tier 2 - 标准霓虹（中级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>Ado - うっせぇわ</td><td>激进摇滚，16分驱动+切分</td></tr>
-<tr><td>Eve - 廻廻奇譚</td><td>快节奏+大量加花，考验耐力</td></tr>
-<tr><td>LiSA - 紅蓮華</td><td>Anime Rock标准模板，副歌爆发力</td></tr>
-<tr><td>ずっと真夜中でいいのに (ZUTOMAYO) - 秒針を噛む</td><td>Jino的复杂贝斯线，16分+弦跳</td></tr>
-<tr><td>ヨルシカ - ただ君に晴れ</td><td>密集16分，音程跳跃大</td></tr>
-</table>
-
-<h3>Tier 3 - 上级霓虹（高级）</h3>
-<table>
-<tr><th>歌曲</th><th>贝斯要点</th></tr>
-<tr><td>ZUTOMAYO - お勉強しといてよ</td><td>Jino技术巅峰，Slap+拨片+三指混合</td></tr>
-<tr><td>凛として時雨 - abnormalize</td><td>变拍号7/8+5/4，贝斯+鼓紧密咬合</td></tr>
-<tr><td>BAND-MAID - DOMINATION</td><td>硬摇滚速度+技术贝斯solo</td></tr>
-<tr><td>Sokoninaru - 最低</td><td>三人乐队贝斯当吉他+贝斯用</td></tr>
-<tr><td>tricot - おちゃんせんすぅす</td><td>Math Rock贝斯，拍号变化极快</td></tr>
-</table>`
-  },
-  {
-    title: '6. 节奏强化训练',
-    body: `
-<h3>"16分网格"基础训练</h3>
-<p>把一小节视作16个位置（16分音符），你可以在任意位置放音。先练基础网格：</p>
-<ul>
-<li>全部16个位置都弹（16分连续）→ 第1,3,5,7... 奇数位置弹 → 第2,4,6,8... 偶数位置弹</li>
-<li>只弹第1,4,7,11,13,15位置 → 制造"碎拍感"</li>
-<li>随机在16个位置中选5个弹 → 制造不规则律动</li>
-</ul>
-
-<h3>切分专项</h3>
-<p>节拍器开40bpm（很慢），在每拍的"e"或"a"位置弹——训练对反拍位置的掌控。</p>
-<p>口诀：1-e-&-a-2-e-&-a-3-e-&-a-4-e-&-a</p>
-
-<h3>三连音专项</h3>
-<p>在J-Pop和高难度段落中三连音频繁出现：</p>
-<ul><li>1-2-3 2-2-3 3-2-3 4-2-3（每拍三连音）</li><li>练习：节拍器40bpm，在一拍内均匀弹3个音</li><li>进阶：第一拍三连音→第二拍八分→第三拍十六分→第四拍三连音，混合切换</li></ul>
-
-<h3>奇数拍训练</h3>
-<p>5/4：每小节5拍，跟着节拍器数"1-2-3-4-5"</p>
-<p>7/8：每小节7个八分音符，"1-2, 1-2, 1-2-3" 或 "1-2-3, 1-2, 1-2"</p>
-
-<div class="highlight-box"><strong>节奏感 = 霓虹贝斯手的命。</strong>音符再花、技巧再炫，节奏不稳就什么都不是。每天至少花15分钟在纯节奏训练上——不开琴，只用手拍节奏，用嘴数拍子。这是最被低估但回报最高的练习。</div>`
-  },
-  {
-    title: '7. 每日练习安排',
-    body: `
-<h3>60分钟版（工作日）</h3>
-<table>
-<tr><th>时间</th><th>内容</th><th>说明</th></tr>
-<tr><td>0-5 min</td><td>左手热身</td><td>半音阶上下行+跨弦爬格子，速度递增，注意放松</td></tr>
-<tr><td>5-15 min</td><td>右手速度专项</td><td>交替拨片/三指轮拨，节拍器60→100bpm，单弦16分</td></tr>
-<tr><td>15-25 min</td><td>节拍器魔鬼训练</td><td>开在2、4拍或反拍，16分+切分+三连音切换练习</td></tr>
-<tr><td>25-40 min</td><td>扒谱/练曲</td><td>扒一首霓虹曲，重点攻克一个加花段落，逐拍降速练</td></tr>
-<tr><td>40-55 min</td><td>难点攻克</td><td>选一段当前"弹不稳"的乐句，降到50%速度，5遍全对再加速5bpm</td></tr>
-<tr><td>55-60 min</td><td>录音+回听</td><td>录一分钟，听节奏有没有飘、音色均不均匀</td></tr>
-</table>
-
-<h3>120分钟版（周末）</h3>
-<table>
-<tr><th>时间</th><th>内容</th></tr>
-<tr><td>0-10 min</td><td>热身+蜘蛛爬格（四指独立性）+右手三指轮拨耐力</td></tr>
-<tr><td>10-30 min</td><td>速度递进：16分 60bpm→80→100→120→140（每档2min不掉速）</td></tr>
-<tr><td>30-50 min</td><td>扒一首新歌的副歌贝斯，写出完整谱，分析加花位置</td></tr>
-<tr><td>50-70 min</td><td>弦跳专项：E-D-A-D-E 交替跳弦练习，逐步加速</td></tr>
-<tr><td>70-90 min</td><td>混合技巧段落实战：拨片→Slap 切换，2小节轮换</td></tr>
-<tr><td>90-110 min</td><td>完整跟歌演奏（Walking+Solo+Fill），录下来回听</td></tr>
-<tr><td>110-120 min</td><td>听扒谱推荐曲目，耳朵分析贝斯编配思路</td></tr>
-</table>
-
-<h3>每周主题</h3>
-<table>
-<tr><th>星期</th><th>主题</th><th>重点</th></tr>
-<tr><td>周一</td><td>右手速度日</td><td>交替拨片/三指轮拨，节拍器刻度递进</td></tr>
-<tr><td>周二</td><td>弦跳日</td><td>跨弦跳跃不减速，E/D/G弦任意组合</td></tr>
-<tr><td>周三</td><td>节奏日</td><td>切分/三连音/反拍/奇数拍，纯节奏训练</td></tr>
-<tr><td>周四</td><td>扒谱日</td><td>扒一首霓虹新曲的完整贝斯线，写谱+分析</td></tr>
-<tr><td>周五</td><td>技巧融合日</td><td>拨片/Slap/三指切换，同一段用三种方式弹</td></tr>
-<tr><td>周六</td><td>综合实战日</td><td>完整流程练习+录音回听+笔记</td></tr>
-<tr><td>周日</td><td>自由日</td><td>跟伴奏随意玩，或休息。听新歌拓展曲库</td></tr>
-</table>
-
-<div class="highlight-box"><strong>霓虹贝斯的三条铁律：</strong><br>
-1. <strong>慢练快用。</strong>60bpm 弹稳了，160 自然来；80 弹得稀碎，永远不稳。<br>
-2. <strong>录音是镜子。</strong>弹的时候自我感觉良好，回听全是节奏飘、音色不均。<br>
-3. <strong>手指放松。</strong>高速弹奏时紧张=锁死=速度上限。手腕和前臂保持松弛，用最小力度拨弦。</div>`
-  }
-]
-
-};
-
-function renderPlan(branch) {
-  const branchKey = branch || loadMeta().activeBranch || 'jazz';
-  // Update tabs
-  document.querySelectorAll('#planBranchTabs .char-tab').forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.branch === branchKey);
-  });
-  let data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
-  // Put "每日练习安排" at the top, renumber
-  data = [...data].sort((a, b) => {
-    if (a.title.includes('每日练习') || a.title.includes('每日练琴')) return -1;
-    if (b.title.includes('每日练习') || b.title.includes('每日练琴')) return 1;
-    return 0;
-  }).map((s, i) => ({
-    ...s,
-    title: s.title.replace(/^\d+/, String(i + 1))
-  }));
-  const container = document.getElementById('planSections');
-  container.innerHTML = data.map((section, i) => `
-    <div class="plan-section ${''}">
-      <div class="plan-section-header" data-index="${i}">
-        <span>${section.title}</span>
-        <span class="arrow">▶</span>
-      </div>
-      <div class="plan-section-body">${section.body}</div>
-    </div>
-  `).join('');
-
-  container.querySelectorAll('.plan-section-header').forEach(header => {
-    header.addEventListener('click', () => {
-      header.parentElement.classList.toggle('open');
-    });
-  });
-}
 
 // ============================================================
 // METRONOME ENGINE
@@ -3580,7 +3008,6 @@ function importJsonScore() {
 
   hideCharCreation();
   renderCalendar();
-  renderPlan();
   renderStats();
   renderRpgPanel();
   updateStreak();
@@ -3628,7 +3055,6 @@ function finalizeCharCreation(scores, note) {
 
   hideCharCreation();
   renderCalendar();
-  renderPlan();
   renderStats();
   renderRpgPanel();
   updateStreak();
@@ -3819,13 +3245,6 @@ function init() {
     });
   });
 
-  // Branch tabs on plan page
-  document.querySelectorAll('#planBranchTabs .char-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      renderPlan(tab.dataset.branch);
-    });
-  });
-
   // Branch tabs on reference table
   document.querySelectorAll('#refBranchTabs .char-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -3873,11 +3292,9 @@ function init() {
     showCharCreation();
     renderStats();
     renderCalendar();
-    renderPlan();
   } else {
     renderStats();
     renderCalendar();
-    renderPlan();
     updateStreak();
     updateDataSize();
   }
