@@ -2133,13 +2133,13 @@ const ACHIEVEMENTS = [
   { id:'lv7', icon:'🔥', name:'高手', desc:'任一维度达到达人II', cat:'level', check:()=>hasMinLevel(7) },
   { id:'lv8', icon:'👑', name:'大师', desc:'任一维度达到达人III', cat:'level', check:()=>hasMinLevel(8) },
   { id:'lvmax', icon:'💎', name:'维度满级', desc:'任一维度达到MAX', cat:'level', check:()=>hasMinLevel(9) },
-  // 维度专项 (6)
-  { id:'tech3', icon:'🔧', name:'技术入门', desc:'技术达到入门者I', cat:'dim', check:()=>hasDimLevel('tech',3) },
-  { id:'rhythm3', icon:'🥁', name:'节奏入门', desc:'节奏达到入门者I', cat:'dim', check:()=>hasDimLevel('rhythm',3) },
-  { id:'ear3', icon:'👂', name:'听力入门', desc:'听力达到入门者I', cat:'dim', check:()=>hasDimLevel('ear',3) },
-  { id:'harmony3', icon:'🎵', name:'和声入门', desc:'和声达到入门者I', cat:'dim', check:()=>hasDimLevel('harmony',3) },
-  { id:'improv3', icon:'🎭', name:'即兴入门', desc:'即兴达到入门者I', cat:'dim', check:()=>hasDimLevel('improv',3) },
-  { id:'rep3', icon:'📚', name:'曲库入门', desc:'曲库达到入门者I', cat:'dim', check:()=>hasDimLevel('repertoire',3) },
+  // 趣味成就 (6)
+  { id:'balanced', icon:'⚖️', name:'均衡发展', desc:'所有维度等级差距不超过1', cat:'fun', check:()=>isBalanced() },
+  { id:'specialist', icon:'🎯', name:'偏科生', desc:'最高等级维度比最低高4级以上', cat:'fun', check:()=>isSpecialist() },
+  { id:'speedrun', icon:'⚡', name:'速通玩家', desc:'单次练琴超过180分钟', cat:'fun', check:d=>hasLongSession(d,180) },
+  { id:'minimalist', icon:'🧘', name:'极简主义', desc:'只选1个维度打卡10次', cat:'fun', check:d=>hasMinimalist(d) },
+  { id:'maximalist', icon:'🌈', name:'全选战士', desc:'6个维度全选打卡', cat:'fun', check:d=>hasMaximalist(d) },
+  { id:'comeback', icon:'🔄', name:'王者归来', desc:'中断7天以上后重新打卡', cat:'fun', check:d=>hasComeback(d) },
   // 分支成就 (6)
   { id:'jazz3', icon:'🎺', name:'爵士入门', desc:'爵士分支任一维度达入门者I', cat:'branch', check:()=>hasBranchLevel('jazz',3) },
   { id:'pop3', icon:'🎸', name:'流行入门', desc:'流行分支任一维度达入门者I', cat:'branch', check:()=>hasBranchLevel('pop',3) },
@@ -2302,6 +2302,43 @@ function hasFullMonth(data) {
   return Object.values(months).some(count => count >= 30);
 }
 
+function isBalanced() {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (!rpg) continue;
+    const levels = DIM_KEYS.map(d => getLevel(rpg.scores[d] || 0, branch));
+    if (Math.max(...levels) - Math.min(...levels) <= 1) return true;
+  }
+  return false;
+}
+
+function isSpecialist() {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (!rpg) continue;
+    const levels = DIM_KEYS.map(d => getLevel(rpg.scores[d] || 0, branch));
+    if (Math.max(...levels) - Math.min(...levels) >= 4) return true;
+  }
+  return false;
+}
+
+function hasMinimalist(data) {
+  return Object.values(data).filter(c => c.focusOrder && c.focusOrder.length === 1).length >= 10;
+}
+
+function hasMaximalist(data) {
+  return Object.values(data).some(c => c.focusOrder && c.focusOrder.length === 6);
+}
+
+function hasComeback(data) {
+  const dates = Object.keys(data).sort();
+  for (let i = 1; i < dates.length; i++) {
+    const gap = (new Date(dates[i]) - new Date(dates[i - 1])) / (1000 * 60 * 60 * 24);
+    if (gap >= 7) return true;
+  }
+  return false;
+}
+
 function renderAchievements(data) {
   const container = document.getElementById('achievements');
   if (!container) return;
@@ -2339,62 +2376,57 @@ function generateShareCard(dateStr, xpGainedByBranch, rpgByBranch, time) {
   if (!canvas) return;
   canvas.width = W * scale;
   canvas.height = H * scale;
-  canvas.style.width = W / 2 + 'px';
-  canvas.style.height = H / 2 + 'px';
+  canvas.style.width = Math.round(W / 1.5) + 'px';
+  canvas.style.height = Math.round(H / 1.5) + 'px';
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
 
-  // Background gradient
+  // Background
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, '#0a0a1a');
+  grad.addColorStop(0.5, '#12122a');
   grad.addColorStop(1, '#1a1a2e');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  // Pixel border
+  // Border
   ctx.strokeStyle = '#f0b030';
   ctx.lineWidth = 6;
-  ctx.strokeRect(8, 8, W - 16, H - 16);
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(14, 14, W - 28, H - 28);
+  ctx.strokeRect(6, 6, W - 12, H - 12);
 
-  // === TOP: Character Panel (35%) ===
-  drawCharacterPanel(ctx, W, rpgByBranch, dateStr, time, xpGainedByBranch);
+  // === Title ===
+  ctx.fillStyle = '#f0b030';
+  ctx.font = 'bold 36px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('贝斯练习RPG', W / 2, 70);
 
-  // === MIDDLE: Radar Chart (35%) ===
+  ctx.fillStyle = '#a09880';
+  ctx.font = '20px Silkscreen, monospace';
+  ctx.fillText(dateStr + '  |  ' + (time || 0) + ' min', W / 2, 110);
+
+  // === Character + Stats ===
+  drawCharacterPanel(ctx, W, rpgByBranch, xpGainedByBranch);
+
+  // === Radar Chart ===
   drawRadarChart(ctx, W, rpgByBranch);
 
-  // === BOTTOM: Info Bar (30%) ===
-  drawInfoBar(ctx, W, H, dateStr, time);
+  // === Bottom ===
+  drawInfoBar(ctx, W, H);
 }
 
-function drawCharacterPanel(ctx, W, rpgByBranch, dateStr, time, xpGainedByBranch) {
+function drawCharacterPanel(ctx, W, rpgByBranch, xpGainedByBranch) {
   const activeBranch = loadMeta().activeBranch || 'jazz';
   const rpg = rpgByBranch[activeBranch];
-  const panelY = 40;
-  const panelH = 620;
 
-  // Panel background
-  ctx.fillStyle = 'rgba(240,176,48,0.05)';
-  ctx.fillRect(30, panelY, W - 60, panelH);
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(30, panelY, W - 60, panelH);
-
-  // Pixel character (centered)
-  const cx = W / 2 - 100, cy = panelY + 120;
+  // Pixel character
+  const cx = 120, cy = 200;
   drawPixelBassPlayer(ctx, cx, cy, rpg, activeBranch);
 
-  // Branch label
+  // Branch + stats on the right
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#f0b030';
   ctx.font = 'bold 28px "Press Start 2P", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(BRANCH_EMOJI[activeBranch] + ' ' + BRANCH_LABELS[activeBranch], W / 2 + 80, panelY + 80);
-
-  // Stats on the right
-  const sx = W / 2 + 40, sy = panelY + 120;
-  ctx.textAlign = 'left';
+  ctx.fillText(BRANCH_EMOJI[activeBranch] + ' ' + BRANCH_LABELS[activeBranch], 280, 180);
 
   // Streak
   const data = loadCheckins();
@@ -2407,96 +2439,99 @@ function drawCharacterPanel(ctx, W, rpgByBranch, dateStr, time, xpGainedByBranch
   }
 
   ctx.fillStyle = '#ffe040';
-  ctx.font = 'bold 48px "Press Start 2P", monospace';
-  ctx.fillText('Day ' + streak, sx, sy + 10);
+  ctx.font = 'bold 56px "Press Start 2P", monospace';
+  ctx.fillText('Day ' + streak, 280, 260);
 
-  ctx.fillStyle = '#e8e0d0';
-  ctx.font = '20px Silkscreen, monospace';
-  ctx.fillText('⏱️ ' + (time || 0) + ' 分钟', sx, sy + 60);
-
-  // Total XP this session
+  // XP gained
   let totalXP = 0;
-  if (xpGainedByBranch) {
-    Object.values(xpGainedByBranch).forEach(b => {
-      totalXP += Object.values(b).reduce((a, v) => a + v, 0);
-    });
+  if (xpGainedByBranch && xpGainedByBranch[activeBranch]) {
+    totalXP = Object.values(xpGainedByBranch[activeBranch]).reduce((a, v) => a + v, 0);
   }
   ctx.fillStyle = '#58b868';
-  ctx.font = 'bold 24px Silkscreen, monospace';
-  ctx.fillText('+' + totalXP + ' XP', sx, sy + 100);
+  ctx.font = 'bold 28px Silkscreen, monospace';
+  ctx.fillText('+' + totalXP + ' XP', 280, 310);
 
-  // Level up info
+  // Levels
   if (rpg) {
-    ctx.fillStyle = '#a09880';
-    ctx.font = '18px Silkscreen, monospace';
-    let ly = sy + 140;
+    ctx.font = '20px Silkscreen, monospace';
+    let ly = 360;
     DIM_KEYS.forEach(dim => {
       const level = getLevel(rpg.scores[dim] || 0, activeBranch);
-      ctx.fillText(DIM_EMOJI[dim] + ' ' + LEVEL_NAMES[level], sx, ly);
-      ly += 32;
+      ctx.fillStyle = level >= 6 ? '#ffe040' : level >= 3 ? '#58b868' : '#a09880';
+      ctx.fillText(DIM_EMOJI[dim] + ' ' + LEVEL_NAMES[level], 280, ly);
+      ly += 38;
     });
   }
 }
 
 function drawPixelBassPlayer(ctx, cx, cy, rpg, branch) {
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(cx - 4, cy + 60, 48, 8);
+
   // Head
   ctx.fillStyle = '#e8c0a0';
-  ctx.fillRect(cx + 8, cy - 20, 24, 24);
+  ctx.fillRect(cx + 8, cy, 24, 24);
   // Hair
   ctx.fillStyle = '#e04848';
-  ctx.fillRect(cx + 4, cy - 28, 32, 12);
+  ctx.fillRect(cx + 4, cy - 8, 32, 12);
   // Eyes
   ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(cx + 14, cy - 12, 4, 4);
-  ctx.fillRect(cx + 22, cy - 12, 4, 4);
+  ctx.fillRect(cx + 14, cy + 8, 4, 4);
+  ctx.fillRect(cx + 22, cy + 8, 4, 4);
+  // Mouth
+  ctx.fillStyle = '#c08060';
+  ctx.fillRect(cx + 16, cy + 16, 8, 2);
   // Body
-  ctx.fillStyle = '#2a2a3e';
-  ctx.fillRect(cx + 8, cy + 4, 24, 28);
+  ctx.fillStyle = '#3a3a5e';
+  ctx.fillRect(cx + 8, cy + 24, 24, 28);
+  // Belt
+  ctx.fillStyle = '#d4882a';
+  ctx.fillRect(cx + 8, cy + 48, 24, 4);
   // Arms
   ctx.fillStyle = '#e8c0a0';
-  ctx.fillRect(cx - 4, cy + 8, 12, 8);
-  ctx.fillRect(cx + 32, cy + 8, 12, 8);
+  ctx.fillRect(cx - 4, cy + 28, 12, 8);
+  ctx.fillRect(cx + 32, cy + 28, 12, 8);
   // Legs
   ctx.fillStyle = '#2a2a3e';
-  ctx.fillRect(cx + 10, cy + 32, 8, 20);
-  ctx.fillRect(cx + 22, cy + 32, 8, 20);
+  ctx.fillRect(cx + 10, cy + 52, 8, 24);
+  ctx.fillRect(cx + 22, cy + 52, 8, 24);
   // Shoes
   ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(cx + 8, cy + 52, 12, 6);
-  ctx.fillRect(cx + 20, cy + 52, 12, 6);
-  // Bass body
+  ctx.fillRect(cx + 8, cy + 76, 12, 6);
+  ctx.fillRect(cx + 20, cy + 76, 12, 6);
+
+  // Bass
   ctx.fillStyle = '#d4882a';
-  ctx.fillRect(cx - 16, cy + 12, 20, 32);
-  ctx.fillRect(cx - 20, cy + 20, 28, 16);
+  ctx.fillRect(cx - 20, cy + 30, 24, 36);
+  ctx.fillStyle = '#b06818';
+  ctx.fillRect(cx - 24, cy + 38, 32, 20);
   // Bass neck
   ctx.fillStyle = '#8b6914';
-  ctx.fillRect(cx - 8, cy - 30, 6, 48);
+  ctx.fillRect(cx - 10, cy - 16, 6, 52);
   // Bass head
-  ctx.fillStyle = '#8b6914';
-  ctx.fillRect(cx - 12, cy - 36, 14, 8);
-  // Bass strings
-  ctx.fillStyle = '#aaa';
-  ctx.fillRect(cx - 5, cy - 28, 2, 44);
-  ctx.fillRect(cx - 2, cy - 28, 2, 44);
+  ctx.fillStyle = '#6b4914';
+  ctx.fillRect(cx - 14, cy - 24, 14, 10);
+  // Strings
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(cx - 7, cy - 14, 1, 48);
+  ctx.fillRect(cx - 4, cy - 14, 1, 48);
 
-  // Level effect
+  // Level glow
   if (rpg) {
     const avgLevel = DIM_KEYS.reduce((s, d) => s + getLevel(rpg.scores[d] || 0, branch), 0) / 6;
     if (avgLevel >= 3) {
-      // Glow circle
-      ctx.fillStyle = 'rgba(240,176,48,0.15)';
+      ctx.fillStyle = 'rgba(240,176,48,0.12)';
       ctx.beginPath();
-      ctx.arc(cx + 10, cy + 20, 50, 0, Math.PI * 2);
+      ctx.arc(cx + 10, cy + 40, 60, 0, Math.PI * 2);
       ctx.fill();
     }
     if (avgLevel >= 6) {
-      // Stars
       ctx.fillStyle = '#ffe040';
-      for (let i = 0; i < 5; i++) {
-        const sx = cx - 30 + Math.random() * 80;
-        const sy = cy - 40 + Math.random() * 100;
-        ctx.fillRect(sx, sy, 4, 4);
-      }
+      [[cx - 20, cy - 10], [cx + 40, cy], [cx + 50, cy + 30], [cx - 30, cy + 50], [cx + 45, cy + 60]].forEach(([x, y]) => {
+        ctx.fillRect(x, y, 4, 4);
+        ctx.fillRect(x + 2, y - 2, 2, 2);
+      });
     }
   }
 }
@@ -2506,15 +2541,21 @@ function drawRadarChart(ctx, W, rpgByBranch) {
   const rpg = rpgByBranch[activeBranch];
   if (!rpg) return;
 
-  const cx = W / 2, cy = 900;
-  const radius = 280;
-  const levels = 9;
+  const cx = W / 2, cy = 850;
+  const radius = 320;
+  const maxLevel = 9;
 
-  // Background hexagon grid (3 layers)
+  // Title
+  ctx.fillStyle = '#a09880';
+  ctx.font = '20px Silkscreen, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('六维属性', cx, cy - radius - 60);
+
+  // Grid layers (background hexagons)
   for (let layer = 1; layer <= 3; layer++) {
     const r = radius * layer / 3;
-    ctx.strokeStyle = '#4a4a6a';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = layer === 3 ? '#4a4a6a' : '#2a2a4a';
+    ctx.lineWidth = layer === 3 ? 2 : 1;
     ctx.beginPath();
     for (let i = 0; i <= 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -2522,90 +2563,110 @@ function drawRadarChart(ctx, W, rpgByBranch) {
       const y = cy + r * Math.sin(angle);
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
+    ctx.closePath();
     ctx.stroke();
+    // Fill inner layers
+    if (layer < 3) {
+      ctx.fillStyle = layer === 1 ? 'rgba(240,176,48,0.03)' : 'rgba(240,176,48,0.02)';
+      ctx.fill();
+    }
   }
 
   // Axis lines
   for (let i = 0; i < 6; i++) {
     const angle = (Math.PI / 3) * i - Math.PI / 2;
-    ctx.strokeStyle = '#4a4a6a';
+    ctx.strokeStyle = '#3a3a5a';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
     ctx.stroke();
   }
 
-  // Data polygon
-  ctx.fillStyle = 'rgba(88,184,104,0.25)';
+  // Level labels on axis
+  ctx.fillStyle = '#4a4a6a';
+  ctx.font = '14px Silkscreen, monospace';
+  ctx.textAlign = 'center';
+  ['初心', '入门', '达人'].forEach((label, i) => {
+    const r = radius * (i + 1) / 3;
+    ctx.fillText(label, cx + r + 20, cy - 5);
+  });
+
+  // Data polygon with gradient
+  const dataGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  dataGrad.addColorStop(0, 'rgba(88,184,104,0.4)');
+  dataGrad.addColorStop(1, 'rgba(88,184,104,0.1)');
+
+  ctx.fillStyle = dataGrad;
   ctx.strokeStyle = '#58b868';
   ctx.lineWidth = 3;
   ctx.beginPath();
+  const points = [];
   DIM_KEYS.forEach((dim, i) => {
     const level = getLevel(rpg.scores[dim] || 0, activeBranch);
-    const r = radius * Math.min(level / levels, 1);
+    const r = radius * Math.min(level / maxLevel, 1);
     const angle = (Math.PI / 3) * i - Math.PI / 2;
     const x = cx + r * Math.cos(angle);
     const y = cy + r * Math.sin(angle);
+    points.push({ x, y, level });
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    // Node square
-    ctx.fillStyle = '#58b868';
-    ctx.fillRect(x - 5, y - 5, 10, 10);
-    ctx.fillStyle = 'rgba(88,184,104,0.25)';
   });
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // Labels
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 20px "Press Start 2P", monospace';
+  // Data points (pixel squares)
+  points.forEach(p => {
+    ctx.fillStyle = p.level >= 6 ? '#ffe040' : '#58b868';
+    ctx.fillRect(p.x - 6, p.y - 6, 12, 12);
+    ctx.fillStyle = p.level >= 6 ? '#f0b030' : '#389838';
+    ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+  });
+
+  // Labels (outside the chart)
+  ctx.font = 'bold 22px "Press Start 2P", monospace';
   DIM_KEYS.forEach((dim, i) => {
     const angle = (Math.PI / 3) * i - Math.PI / 2;
-    const x = cx + (radius + 50) * Math.cos(angle);
-    const y = cy + (radius + 50) * Math.sin(angle);
+    const x = cx + (radius + 70) * Math.cos(angle);
+    const y = cy + (radius + 70) * Math.sin(angle);
     ctx.fillStyle = '#f0b030';
-    ctx.fillText(DIM_EMOJI[dim], x, y - 8);
+    ctx.textAlign = 'center';
+    ctx.fillText(DIM_EMOJI[dim], x, y - 10);
     ctx.fillStyle = '#e8e0d0';
-    ctx.font = '16px Silkscreen, monospace';
-    ctx.fillText(DIM_LABELS[dim].slice(0, 4), x, y + 16);
-    ctx.font = 'bold 20px "Press Start 2P", monospace';
+    ctx.font = '18px Silkscreen, monospace';
+    ctx.fillText(DIM_LABELS[dim], x, y + 16);
+    // Level number
+    const level = getLevel(rpg.scores[dim] || 0, activeBranch);
+    ctx.fillStyle = level >= 6 ? '#ffe040' : level >= 3 ? '#58b868' : '#a09880';
+    ctx.font = 'bold 18px "Press Start 2P", monospace';
+    ctx.fillText('Lv.' + level, x, y + 40);
+    ctx.font = 'bold 22px "Press Start 2P", monospace';
   });
 }
 
-function drawInfoBar(ctx, W, H, dateStr, time) {
-  // Divider
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(60, H - 380);
-  ctx.lineTo(W - 60, H - 380);
-  ctx.stroke();
-
+function drawInfoBar(ctx, W, H) {
   // Encouragement
-  const encs = ['继续加油，贝斯之路没有捷径', '每一次练习都在积累，别停下', '今天的汗水是明天的即兴', '坚持就是最强的节奏感', '慢慢来，比较快'];
+  const encs = ['继续加油，贝斯之路没有捷径', '每一次练习都在积累', '今天的汗水是明天的即兴', '坚持就是最强的节奏感', '慢慢来，比较快'];
   const enc = encs[Math.floor(Math.random() * encs.length)];
   ctx.fillStyle = '#e8e0d0';
-  ctx.font = '22px Silkscreen, monospace';
+  ctx.font = '24px Silkscreen, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(enc, W / 2, H - 320);
-
-  // Date
-  ctx.fillStyle = '#a09880';
-  ctx.font = '18px Silkscreen, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(dateStr, 60, H - 240);
-
-  // App name
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#f0b030';
-  ctx.font = 'bold 20px "Press Start 2P", monospace';
-  ctx.fillText('Bass Practice RPG', W - 60, H - 240);
+  ctx.fillText(enc, W / 2, H - 200);
 
   // CTA
-  ctx.textAlign = 'center';
   ctx.fillStyle = '#58a8d8';
-  ctx.font = '18px Silkscreen, monospace';
-  ctx.fillText('来和我一起练琴吧 ▸', W / 2, H - 180);
+  ctx.font = '20px Silkscreen, monospace';
+  ctx.fillText('来和我一起练琴吧 ▸', W / 2, H - 140);
+
+  // Bottom bar
+  ctx.fillStyle = '#2a2a4a';
+  ctx.fillRect(0, H - 80, W, 80);
+  ctx.fillStyle = '#a09880';
+  ctx.font = '16px Silkscreen, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('🎸 贝斯练习RPG', 40, H - 40);
+  ctx.textAlign = 'right';
+  ctx.fillText('练琴游戏化', W - 40, H - 40);
 }
 
 function showShareCard() {
