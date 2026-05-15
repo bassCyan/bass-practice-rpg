@@ -1464,7 +1464,19 @@
       <div class="btn-row" style="margin-top:14px; justify-content:center;">
         <button class="btn btn-ghost btn-sm" id="btnRefTable2">📋 查看评分参照表</button>
         <button class="btn btn-primary" id="btnCloseSettlement">👍 知道了</button>
+        <button class="btn btn-ghost btn-sm" id="btnShareCard">📸 分享图</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE CARD PREVIEW MODAL -->
+<div class="modal-overlay" id="shareCardOverlay" style="z-index:600;">
+  <div class="modal" style="max-width:400px;max-height:90vh;overflow-y:auto;text-align:center;padding:16px;">
+    <canvas id="shareCardCanvas" style="max-width:100%;border:3px solid var(--border);"></canvas>
+    <div class="btn-row" style="justify-content:center;margin-top:12px;">
+      <button class="btn btn-primary btn-sm" id="btnDownloadShareCard">📥 保存图片</button>
+      <button class="btn btn-ghost btn-sm" id="btnCloseShareCard">关闭</button>
     </div>
   </div>
 </div>
@@ -1998,6 +2010,9 @@ document.getElementById('btnSave').addEventListener('click', () => {
     updatedAt: new Date().toISOString()
   });
 
+  // Check achievements
+  checkAndUnlockAchievements();
+
   selectedDate = dateStr;
   closeModal();
   renderCalendar();
@@ -2078,21 +2093,130 @@ function updateStreak() {
 }
 
 // ============================================================
-// ACHIEVEMENTS
+// ACHIEVEMENTS (68个)
 // ============================================================
 const ACHIEVEMENTS = [
-  { id: 'first', icon: '🎸', name: '初次打卡', desc: '完成第一次练琴打卡', check: (data) => Object.keys(data).length >= 1 },
-  { id: 'streak3', icon: '🔥', name: '三天连续', desc: '连续打卡3天', check: (data) => getMaxStreak(data) >= 3 },
-  { id: 'streak7', icon: '🔥🔥', name: '一周坚持', desc: '连续打卡7天', check: (data) => getMaxStreak(data) >= 7 },
-  { id: 'streak30', icon: '👑', name: '月度王者', desc: '连续打卡30天', check: (data) => getMaxStreak(data) >= 30 },
-  { id: 'total100', icon: '⏱️', name: '百分钟', desc: '累计练琴100分钟', check: (data) => getTotalMin(data) >= 100 },
-  { id: 'total1000', icon: '⏰', name: '千分钟', desc: '累计练琴1000分钟', check: (data) => getTotalMin(data) >= 1000 },
-  { id: 'total5000', icon: '💎', name: '五千分钟', desc: '累计练琴5000分钟', check: (data) => getTotalMin(data) >= 5000 },
-  { id: 'level5', icon: '⭐', name: '小有成就', desc: '任一维度达到中级', check: () => hasMinLevel(3) },
-  { id: 'level7', icon: '🌟', name: '高手之路', desc: '任一维度达到高级', check: () => hasMinLevel(6) },
-  { id: 'allbranch', icon: '🎺🎸🎹', name: '三栖贝斯手', desc: '三个分支都有打卡记录', check: (data) => hasAllBranches(data) },
+  // 打卡次数 (8)
+  { id:'first', icon:'🎸', name:'初次拨弦', desc:'完成第一次打卡', cat:'checkin', check:d=>Object.keys(d).length>=1 },
+  { id:'c10', icon:'🎵', name:'小试牛刀', desc:'累计打卡10次', cat:'checkin', check:d=>Object.keys(d).length>=10 },
+  { id:'c50', icon:'🎶', name:'半百练习', desc:'累计打卡50次', cat:'checkin', check:d=>Object.keys(d).length>=50 },
+  { id:'c100', icon:'🎤', name:'百次登台', desc:'累计打卡100次', cat:'checkin', check:d=>Object.keys(d).length>=100 },
+  { id:'c200', icon:'🎼', name:'勤勉乐手', desc:'累计打卡200次', cat:'checkin', check:d=>Object.keys(d).length>=200 },
+  { id:'c365', icon:'📆', name:'年度全勤', desc:'累计打卡365次', cat:'checkin', check:d=>Object.keys(d).length>=365 },
+  { id:'c500', icon:'🏆', name:'五百强', desc:'累计打卡500次', cat:'checkin', check:d=>Object.keys(d).length>=500 },
+  { id:'c1000', icon:'👑', name:'千次传说', desc:'累计打卡1000次', cat:'checkin', check:d=>Object.keys(d).length>=1000 },
+  // 连续打卡 (8)
+  { id:'s3', icon:'🔥', name:'三日不辍', desc:'连续打卡3天', cat:'streak', check:d=>getMaxStreak(d)>=3 },
+  { id:'s7', icon:'🔥🔥', name:'一周坚持', desc:'连续打卡7天', cat:'streak', check:d=>getMaxStreak(d)>=7 },
+  { id:'s14', icon:'💪', name:'两周毅力', desc:'连续打卡14天', cat:'streak', check:d=>getMaxStreak(d)>=14 },
+  { id:'s30', icon:'🌟', name:'月度之星', desc:'连续打卡30天', cat:'streak', check:d=>getMaxStreak(d)>=30 },
+  { id:'s60', icon:'⭐', name:'双月战士', desc:'连续打卡60天', cat:'streak', check:d=>getMaxStreak(d)>=60 },
+  { id:'s90', icon:'💫', name:'季度王者', desc:'连续打卡90天', cat:'streak', check:d=>getMaxStreak(d)>=90 },
+  { id:'s100', icon:'💎', name:'百日钻石', desc:'连续打卡100天', cat:'streak', check:d=>getMaxStreak(d)>=100 },
+  { id:'s365', icon:'🌈', name:'年度传说', desc:'连续打卡365天', cat:'streak', check:d=>getMaxStreak(d)>=365 },
+  // 练习时长 (8)
+  { id:'t100', icon:'⏱️', name:'百分钟', desc:'累计练琴100分钟', cat:'time', check:d=>getTotalMin(d)>=100 },
+  { id:'t500', icon:'⏰', name:'五百分钟', desc:'累计练琴500分钟', cat:'time', check:d=>getTotalMin(d)>=500 },
+  { id:'t1000', icon:'🕐', name:'千分钟', desc:'累计练琴1000分钟', cat:'time', check:d=>getTotalMin(d)>=1000 },
+  { id:'t2000', icon:'🕑', name:'两千分钟', desc:'累计练琴2000分钟', cat:'time', check:d=>getTotalMin(d)>=2000 },
+  { id:'t5000', icon:'🕔', name:'五千分钟', desc:'累计练琴5000分钟', cat:'time', check:d=>getTotalMin(d)>=5000 },
+  { id:'t10000', icon:'🕙', name:'万分钟', desc:'累计练琴10000分钟', cat:'time', check:d=>getTotalMin(d)>=10000 },
+  { id:'t20000', icon:'⏳', name:'两万分钟', desc:'累计练琴20000分钟', cat:'time', check:d=>getTotalMin(d)>=20000 },
+  { id:'t50000', icon:'🕰️', name:'五万分钟', desc:'累计练琴50000分钟', cat:'time', check:d=>getTotalMin(d)>=50000 },
+  // 等级成就 (9)
+  { id:'lv1', icon:'🌱', name:'萌芽', desc:'任一维度达到初心者II', cat:'level', check:()=>hasMinLevel(1) },
+  { id:'lv2', icon:'🌿', name:'成长', desc:'任一维度达到初心者III', cat:'level', check:()=>hasMinLevel(2) },
+  { id:'lv3', icon:'🌳', name:'入门', desc:'任一维度达到入门者I', cat:'level', check:()=>hasMinLevel(3) },
+  { id:'lv4', icon:'🌲', name:'扎根', desc:'任一维度达到入门者II', cat:'level', check:()=>hasMinLevel(4) },
+  { id:'lv5', icon:'🎋', name:'进阶', desc:'任一维度达到入门者III', cat:'level', check:()=>hasMinLevel(5) },
+  { id:'lv6', icon:'⚡', name:'突破', desc:'任一维度达到达人I', cat:'level', check:()=>hasMinLevel(6) },
+  { id:'lv7', icon:'🔥', name:'高手', desc:'任一维度达到达人II', cat:'level', check:()=>hasMinLevel(7) },
+  { id:'lv8', icon:'👑', name:'大师', desc:'任一维度达到达人III', cat:'level', check:()=>hasMinLevel(8) },
+  { id:'lvmax', icon:'💎', name:'维度满级', desc:'任一维度达到MAX', cat:'level', check:()=>hasMinLevel(9) },
+  // 维度专项 (6)
+  { id:'tech3', icon:'🔧', name:'技术入门', desc:'技术达到入门者I', cat:'dim', check:()=>hasDimLevel('tech',3) },
+  { id:'rhythm3', icon:'🥁', name:'节奏入门', desc:'节奏达到入门者I', cat:'dim', check:()=>hasDimLevel('rhythm',3) },
+  { id:'ear3', icon:'👂', name:'听力入门', desc:'听力达到入门者I', cat:'dim', check:()=>hasDimLevel('ear',3) },
+  { id:'harmony3', icon:'🎵', name:'和声入门', desc:'和声达到入门者I', cat:'dim', check:()=>hasDimLevel('harmony',3) },
+  { id:'improv3', icon:'🎭', name:'即兴入门', desc:'即兴达到入门者I', cat:'dim', check:()=>hasDimLevel('improv',3) },
+  { id:'rep3', icon:'📚', name:'曲库入门', desc:'曲库达到入门者I', cat:'dim', check:()=>hasDimLevel('repertoire',3) },
+  // 分支成就 (6)
+  { id:'jazz3', icon:'🎺', name:'爵士入门', desc:'爵士分支任一维度达入门者I', cat:'branch', check:()=>hasBranchLevel('jazz',3) },
+  { id:'pop3', icon:'🎸', name:'流行入门', desc:'流行分支任一维度达入门者I', cat:'branch', check:()=>hasBranchLevel('pop',3) },
+  { id:'neon3', icon:'🎹', name:'霓虹入门', desc:'霓虹分支任一维度达入门者I', cat:'branch', check:()=>hasBranchLevel('neon',3) },
+  { id:'all3', icon:'🎺🎸🎹', name:'三栖入门', desc:'三个分支都有入门者I', cat:'branch', check:()=>hasBranchLevel('jazz',3)&&hasBranchLevel('pop',3)&&hasBranchLevel('neon',3) },
+  { id:'all5', icon:'🌟', name:'三栖进阶', desc:'三个分支都有入门者III', cat:'branch', check:()=>hasBranchLevel('jazz',5)&&hasBranchLevel('pop',5)&&hasBranchLevel('neon',5) },
+  { id:'all7', icon:'💫', name:'三栖达人', desc:'三个分支都有达人I', cat:'branch', check:()=>hasBranchLevel('jazz',7)&&hasBranchLevel('pop',7)&&hasBranchLevel('neon',7) },
+  // 练习模式 (6)
+  { id:'night', icon:'🌙', name:'夜猫子', desc:'在凌晨0-5点打卡', cat:'pattern', check:d=>hasTimePattern(d,0,5) },
+  { id:'early', icon:'🌅', name:'早起鸟', desc:'在早上5-7点打卡', cat:'pattern', check:d=>hasTimePattern(d,5,7) },
+  { id:'long2', icon:'⏳', name:'两小时马拉松', desc:'单次练琴超过120分钟', cat:'pattern', check:d=>hasLongSession(d,120) },
+  { id:'long3', icon:'🏋️', name:'三小时铁人', desc:'单次练琴超过180分钟', cat:'pattern', check:d=>hasLongSession(d,180) },
+  { id:'weekend', icon:'🎉', name:'周末战士', desc:'在周六或周日打卡', cat:'pattern', check:d=>hasWeekend(d) },
+  { id:'short5', icon:'⚡', name:'闪电练习', desc:'单次练琴5分钟以内', cat:'pattern', check:d=>hasShortSession(d,5) },
+  // 彩蛋 (10)
+  { id:'ny', icon:'🎊', name:'新年第一弹', desc:'在1月1日打卡', cat:'easter', check:d=>hasDate(d,'-01-01') },
+  { id:'vday', icon:'💕', name:'情人节练习', desc:'在2月14日打卡', cat:'easter', check:d=>hasDate(d,'-02-14') },
+  { id:'april', icon:'🤡', name:'愚人节', desc:'在4月1日打卡', cat:'easter', check:d=>hasDate(d,'-04-01') },
+  { id:'music', icon:'🎵', name:'音乐节', desc:'在6月21日（国际音乐日）打卡', cat:'easter', check:d=>hasDate(d,'-06-21') },
+  { id:'halloween', icon:'🎃', name:'万圣节练习', desc:'在10月31日打卡', cat:'easter', check:d=>hasDate(d,'-10-31') },
+  { id:'xmas', icon:'🎄', name:'圣诞练习', desc:'在12月25日打卡', cat:'easter', check:d=>hasDate(d,'-12-25') },
+  { id:'exact60', icon:'⏱️', name:'整点一小时', desc:'恰好练琴60分钟', cat:'easter', check:d=>hasExactTime(d,60) },
+  { id:'exact69', icon:'😏', name:'Nice', desc:'恰好练琴69分钟', cat:'easter', check:d=>hasExactTime(d,69) },
+  { id:'exact120', icon:'🎯', name:'精准两小时', desc:'恰好练琴120分钟', cat:'easter', check:d=>hasExactTime(d,120) },
+  { id:'alldim', icon:'🌈', name:'全面发展', desc:'所有6个维度都达到入门者I', cat:'easter', check:()=>hasAllDims(3) },
+  // 特殊成就 (7)
+  { id:'alldim5', icon:'⭐', name:'全面进阶', desc:'所有6个维度都达到入门者III', cat:'special', check:()=>hasAllDims(5) },
+  { id:'alldim7', icon:'🌟', name:'全面达人', desc:'所有6个维度都达到达人I', cat:'special', check:()=>hasAllDims(7) },
+  { id:'xp10k', icon:'💰', name:'万点经验', desc:'单分支总XP超过10000', cat:'special', check:()=>hasBranchXP(10000) },
+  { id:'xp50k', icon:'💰💰', name:'五万经验', desc:'单分支总XP超过50000', cat:'special', check:()=>hasBranchXP(50000) },
+  { id:'month30', icon:'📅', name:'满月打卡', desc:'一个月内打卡30天', cat:'special', check:d=>hasFullMonth(d) },
+  { id:'noGap', icon:'🔗', name:'无缝衔接', desc:'打卡日期没有任何间隔', cat:'special', check:d=>Object.keys(d).length>=10&&getMaxStreak(d)>=Object.keys(d).length },
+  { id:'all68', icon:'🏆', name:'全成就大师', desc:'解锁所有其他67个成就', cat:'special', check:(d,u)=>u&&Object.keys(u).length>=67 },
 ];
 
+// Achievement unlock tracking
+const STORAGE_ACHIEVEMENTS = 'bass_achievements';
+
+function loadAchievements() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_ACHIEVEMENTS)) || {}; } catch { return {}; }
+}
+
+function saveAchievements(data) {
+  localStorage.setItem(STORAGE_ACHIEVEMENTS, JSON.stringify(data));
+}
+
+function checkAndUnlockAchievements() {
+  const data = loadCheckins();
+  const unlocked = loadAchievements();
+  let changed = false;
+  const newlyUnlocked = [];
+  ACHIEVEMENTS.forEach(a => {
+    if (!unlocked[a.id] && a.check(data, unlocked)) {
+      unlocked[a.id] = Date.now();
+      changed = true;
+      newlyUnlocked.push(a);
+    }
+  });
+  if (changed) {
+    saveAchievements(unlocked);
+    if (newlyUnlocked.length > 0) showAchievementPopup(newlyUnlocked);
+  }
+  return unlocked;
+}
+
+function showAchievementPopup(achievements) {
+  const existing = document.getElementById('achievementPopup');
+  if (existing) existing.remove();
+  const popup = document.createElement('div');
+  popup.id = 'achievementPopup';
+  popup.style.cssText = 'position:fixed;top:20px;right:20px;z-index:600;background:var(--surface);border:3px solid var(--accent);padding:16px 20px;max-width:300px;animation:fadeInUp 0.3s ease-out;';
+  popup.innerHTML = achievements.map(a => `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:1.5em;">${a.icon}</span><div><div style="font-family:var(--font-ui);font-size:0.8em;color:var(--accent);">🏆 成就解锁！</div><div style="font-family:var(--font-ui);font-size:0.7em;">${a.name}</div></div></div>`).join('');
+  document.body.appendChild(popup);
+  setTimeout(() => { popup.style.transition = 'opacity 0.5s'; popup.style.opacity = '0'; setTimeout(() => popup.remove(), 500); }, 3000);
+}
+
+// Achievement check helpers
 function getMaxStreak(data) {
   const dates = Object.keys(data).sort();
   let max = 0, current = 0;
@@ -2109,9 +2233,7 @@ function getMaxStreak(data) {
   return max;
 }
 
-function getTotalMin(data) {
-  return Object.values(data).reduce((sum, c) => sum + (c.time || 0), 0);
-}
+function getTotalMin(data) { return Object.values(data).reduce((s, c) => s + (c.time || 0), 0); }
 
 function hasMinLevel(minLevel) {
   for (const branch of BRANCH_KEYS) {
@@ -2124,35 +2246,374 @@ function hasMinLevel(minLevel) {
   return false;
 }
 
-function hasAllBranches(data) {
-  const branches = new Set();
-  Object.values(data).forEach(c => {
-    if (c.xpGainedByBranch) {
-      Object.keys(c.xpGainedByBranch).forEach(b => {
-        const total = Object.values(c.xpGainedByBranch[b]).reduce((a, v) => a + v, 0);
-        if (total > 0) branches.add(b);
-      });
-    }
+function hasDimLevel(dim, minLevel) {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (rpg && getLevel(rpg.scores[dim] || 0, branch) >= minLevel) return true;
+  }
+  return false;
+}
+
+function hasBranchLevel(branch, minLevel) {
+  const rpg = loadBranchState(branch);
+  if (!rpg) return false;
+  return DIM_KEYS.some(dim => getLevel(rpg.scores[dim] || 0, branch) >= minLevel);
+}
+
+function hasAllDims(minLevel) {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (!rpg) continue;
+    if (DIM_KEYS.every(dim => getLevel(rpg.scores[dim] || 0, branch) >= minLevel)) return true;
+  }
+  return false;
+}
+
+function hasBranchXP(minXP) {
+  for (const branch of BRANCH_KEYS) {
+    const rpg = loadBranchState(branch);
+    if (!rpg) continue;
+    const total = Object.values(rpg.scores).reduce((s, v) => s + (v || 0), 0);
+    if (total >= minXP) return true;
+  }
+  return false;
+}
+
+function hasTimePattern(data, startH, endH) {
+  return Object.keys(data).some(d => {
+    const h = new Date(d).getHours();
+    return h >= startH && h < endH;
   });
-  return branches.size >= 3;
+}
+
+function hasLongSession(data, minMin) { return Object.values(data).some(c => (c.time || 0) >= minMin); }
+function hasShortSession(data, maxMin) { return Object.values(data).some(c => (c.time || 0) > 0 && (c.time || 0) <= maxMin); }
+function hasExactTime(data, exactMin) { return Object.values(data).some(c => c.time === exactMin); }
+function hasDate(data, suffix) { return Object.keys(data).some(d => d.endsWith(suffix)); }
+function hasWeekend(data) {
+  return Object.keys(data).some(d => { const day = new Date(d).getDay(); return day === 0 || day === 6; });
+}
+function hasFullMonth(data) {
+  const months = {};
+  Object.keys(data).forEach(d => {
+    const ym = d.slice(0, 7);
+    months[ym] = (months[ym] || 0) + 1;
+  });
+  return Object.values(months).some(count => count >= 30);
 }
 
 function renderAchievements(data) {
   const container = document.getElementById('achievements');
   if (!container) return;
-  container.innerHTML = ACHIEVEMENTS.map(a => {
-    const unlocked = a.check(data);
-    return `<div class="achievement ${unlocked ? 'unlocked' : ''}">
-      <div class="achievement-icon">${a.icon}</div>
-      <div class="achievement-name">${a.name}</div>
-      <div class="achievement-desc">${a.desc}</div>
+  const unlocked = checkAndUnlockAchievements();
+  // Sort: unlocked first (by unlock time), then locked
+  const sorted = [...ACHIEVEMENTS].sort((a, b) => {
+    const ua = unlocked[a.id], ub = unlocked[b.id];
+    if (ua && ub) return ua - ub;
+    if (ua) return -1;
+    if (ub) return 1;
+    return 0;
+  });
+  container.innerHTML = sorted.map(a => {
+    const isUnlocked = !!unlocked[a.id];
+    return `<div class="achievement ${isUnlocked ? 'unlocked' : ''}">
+      <div class="achievement-icon">${isUnlocked ? a.icon : '❓'}</div>
+      <div class="achievement-name">${isUnlocked ? a.name : '???'}</div>
+      <div class="achievement-desc">${isUnlocked ? a.desc : '未解锁'}</div>
     </div>`;
   }).join('');
+  // Update best streak in stats
+  const bestStreakEl = document.getElementById('statBestStreak');
+  if (bestStreakEl) bestStreakEl.textContent = getMaxStreak(data);
 }
 
 // ============================================================
-// STATS
+// SHARE CARD
 // ============================================================
+let lastSettlementData = null;
+
+function generateShareCard(dateStr, xpGainedByBranch, rpgByBranch, time) {
+  const W = 1080, H = 1920;
+  const scale = 2;
+  const canvas = document.getElementById('shareCardCanvas');
+  if (!canvas) return;
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  canvas.style.width = W / 2 + 'px';
+  canvas.style.height = H / 2 + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a0a1a');
+  grad.addColorStop(1, '#1a1a2e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Pixel border
+  ctx.strokeStyle = '#f0b030';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(8, 8, W - 16, H - 16);
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(14, 14, W - 28, H - 28);
+
+  // === TOP: Character Panel (35%) ===
+  drawCharacterPanel(ctx, W, rpgByBranch, dateStr, time, xpGainedByBranch);
+
+  // === MIDDLE: Radar Chart (35%) ===
+  drawRadarChart(ctx, W, rpgByBranch);
+
+  // === BOTTOM: Info Bar (30%) ===
+  drawInfoBar(ctx, W, H, dateStr, time);
+}
+
+function drawCharacterPanel(ctx, W, rpgByBranch, dateStr, time, xpGainedByBranch) {
+  const activeBranch = loadMeta().activeBranch || 'jazz';
+  const rpg = rpgByBranch[activeBranch];
+  const panelY = 40;
+  const panelH = 620;
+
+  // Panel background
+  ctx.fillStyle = 'rgba(240,176,48,0.05)';
+  ctx.fillRect(30, panelY, W - 60, panelH);
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(30, panelY, W - 60, panelH);
+
+  // Pixel character (centered)
+  const cx = W / 2 - 100, cy = panelY + 120;
+  drawPixelBassPlayer(ctx, cx, cy, rpg, activeBranch);
+
+  // Branch label
+  ctx.fillStyle = '#f0b030';
+  ctx.font = 'bold 28px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(BRANCH_EMOJI[activeBranch] + ' ' + BRANCH_LABELS[activeBranch], W / 2 + 80, panelY + 80);
+
+  // Stats on the right
+  const sx = W / 2 + 40, sy = panelY + 120;
+  ctx.textAlign = 'left';
+
+  // Streak
+  const data = loadCheckins();
+  let streak = 0;
+  const dd = new Date();
+  dd.setHours(0, 0, 0, 0);
+  while (true) {
+    const ds = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
+    if (data[ds]) { streak++; dd.setDate(dd.getDate() - 1); } else break;
+  }
+
+  ctx.fillStyle = '#ffe040';
+  ctx.font = 'bold 48px "Press Start 2P", monospace';
+  ctx.fillText('Day ' + streak, sx, sy + 10);
+
+  ctx.fillStyle = '#e8e0d0';
+  ctx.font = '20px Silkscreen, monospace';
+  ctx.fillText('⏱️ ' + (time || 0) + ' 分钟', sx, sy + 60);
+
+  // Total XP this session
+  let totalXP = 0;
+  if (xpGainedByBranch) {
+    Object.values(xpGainedByBranch).forEach(b => {
+      totalXP += Object.values(b).reduce((a, v) => a + v, 0);
+    });
+  }
+  ctx.fillStyle = '#58b868';
+  ctx.font = 'bold 24px Silkscreen, monospace';
+  ctx.fillText('+' + totalXP + ' XP', sx, sy + 100);
+
+  // Level up info
+  if (rpg) {
+    ctx.fillStyle = '#a09880';
+    ctx.font = '18px Silkscreen, monospace';
+    let ly = sy + 140;
+    DIM_KEYS.forEach(dim => {
+      const level = getLevel(rpg.scores[dim] || 0, activeBranch);
+      ctx.fillText(DIM_EMOJI[dim] + ' ' + LEVEL_NAMES[level], sx, ly);
+      ly += 32;
+    });
+  }
+}
+
+function drawPixelBassPlayer(ctx, cx, cy, rpg, branch) {
+  // Head
+  ctx.fillStyle = '#e8c0a0';
+  ctx.fillRect(cx + 8, cy - 20, 24, 24);
+  // Hair
+  ctx.fillStyle = '#e04848';
+  ctx.fillRect(cx + 4, cy - 28, 32, 12);
+  // Eyes
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(cx + 14, cy - 12, 4, 4);
+  ctx.fillRect(cx + 22, cy - 12, 4, 4);
+  // Body
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(cx + 8, cy + 4, 24, 28);
+  // Arms
+  ctx.fillStyle = '#e8c0a0';
+  ctx.fillRect(cx - 4, cy + 8, 12, 8);
+  ctx.fillRect(cx + 32, cy + 8, 12, 8);
+  // Legs
+  ctx.fillStyle = '#2a2a3e';
+  ctx.fillRect(cx + 10, cy + 32, 8, 20);
+  ctx.fillRect(cx + 22, cy + 32, 8, 20);
+  // Shoes
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(cx + 8, cy + 52, 12, 6);
+  ctx.fillRect(cx + 20, cy + 52, 12, 6);
+  // Bass body
+  ctx.fillStyle = '#d4882a';
+  ctx.fillRect(cx - 16, cy + 12, 20, 32);
+  ctx.fillRect(cx - 20, cy + 20, 28, 16);
+  // Bass neck
+  ctx.fillStyle = '#8b6914';
+  ctx.fillRect(cx - 8, cy - 30, 6, 48);
+  // Bass head
+  ctx.fillStyle = '#8b6914';
+  ctx.fillRect(cx - 12, cy - 36, 14, 8);
+  // Bass strings
+  ctx.fillStyle = '#aaa';
+  ctx.fillRect(cx - 5, cy - 28, 2, 44);
+  ctx.fillRect(cx - 2, cy - 28, 2, 44);
+
+  // Level effect
+  if (rpg) {
+    const avgLevel = DIM_KEYS.reduce((s, d) => s + getLevel(rpg.scores[d] || 0, branch), 0) / 6;
+    if (avgLevel >= 3) {
+      // Glow circle
+      ctx.fillStyle = 'rgba(240,176,48,0.15)';
+      ctx.beginPath();
+      ctx.arc(cx + 10, cy + 20, 50, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (avgLevel >= 6) {
+      // Stars
+      ctx.fillStyle = '#ffe040';
+      for (let i = 0; i < 5; i++) {
+        const sx = cx - 30 + Math.random() * 80;
+        const sy = cy - 40 + Math.random() * 100;
+        ctx.fillRect(sx, sy, 4, 4);
+      }
+    }
+  }
+}
+
+function drawRadarChart(ctx, W, rpgByBranch) {
+  const activeBranch = loadMeta().activeBranch || 'jazz';
+  const rpg = rpgByBranch[activeBranch];
+  if (!rpg) return;
+
+  const cx = W / 2, cy = 900;
+  const radius = 280;
+  const levels = 9;
+
+  // Background hexagon grid (3 layers)
+  for (let layer = 1; layer <= 3; layer++) {
+    const r = radius * layer / 3;
+    ctx.strokeStyle = '#4a4a6a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Axis lines
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    ctx.strokeStyle = '#4a4a6a';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+    ctx.stroke();
+  }
+
+  // Data polygon
+  ctx.fillStyle = 'rgba(88,184,104,0.25)';
+  ctx.strokeStyle = '#58b868';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  DIM_KEYS.forEach((dim, i) => {
+    const level = getLevel(rpg.scores[dim] || 0, activeBranch);
+    const r = radius * Math.min(level / levels, 1);
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    // Node square
+    ctx.fillStyle = '#58b868';
+    ctx.fillRect(x - 5, y - 5, 10, 10);
+    ctx.fillStyle = 'rgba(88,184,104,0.25)';
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Labels
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 20px "Press Start 2P", monospace';
+  DIM_KEYS.forEach((dim, i) => {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const x = cx + (radius + 50) * Math.cos(angle);
+    const y = cy + (radius + 50) * Math.sin(angle);
+    ctx.fillStyle = '#f0b030';
+    ctx.fillText(DIM_EMOJI[dim], x, y - 8);
+    ctx.fillStyle = '#e8e0d0';
+    ctx.font = '16px Silkscreen, monospace';
+    ctx.fillText(DIM_LABELS[dim].slice(0, 4), x, y + 16);
+    ctx.font = 'bold 20px "Press Start 2P", monospace';
+  });
+}
+
+function drawInfoBar(ctx, W, H, dateStr, time) {
+  // Divider
+  ctx.strokeStyle = '#4a4a6a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(60, H - 380);
+  ctx.lineTo(W - 60, H - 380);
+  ctx.stroke();
+
+  // Encouragement
+  const encs = ['继续加油，贝斯之路没有捷径', '每一次练习都在积累，别停下', '今天的汗水是明天的即兴', '坚持就是最强的节奏感', '慢慢来，比较快'];
+  const enc = encs[Math.floor(Math.random() * encs.length)];
+  ctx.fillStyle = '#e8e0d0';
+  ctx.font = '22px Silkscreen, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(enc, W / 2, H - 320);
+
+  // Date
+  ctx.fillStyle = '#a09880';
+  ctx.font = '18px Silkscreen, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(dateStr, 60, H - 240);
+
+  // App name
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f0b030';
+  ctx.font = 'bold 20px "Press Start 2P", monospace';
+  ctx.fillText('Bass Practice RPG', W - 60, H - 240);
+
+  // CTA
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#58a8d8';
+  ctx.font = '18px Silkscreen, monospace';
+  ctx.fillText('来和我一起练琴吧 ▸', W / 2, H - 180);
+}
+
+function showShareCard() {
+  const d = lastSettlementData;
+  if (!d) return;
+  generateShareCard(d.dateStr, d.xpGainedByBranch, d.rpgByBranch, d.time);
+  document.getElementById('shareCardOverlay').classList.add('show');
+}
 function renderStats() {
   const data = loadCheckins();
   const ym = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
@@ -2552,6 +3013,9 @@ function renderRefTable(branch) {
 function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time) {
   const overlay = document.getElementById('settlementOverlay');
   if (!overlay) return;
+
+  // Store for share card
+  lastSettlementData = { dateStr, xpGainedByBranch, rpgByBranch, time };
 
   // Screen 1: Summary — show XP for all 3 branches
   const xpList = document.getElementById('settlementXpList');
@@ -3176,6 +3640,36 @@ function init() {
   if (settlementOverlay) {
     settlementOverlay.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) { settlementOverlay.classList.remove('show'); document.body.style.overflow = ''; }
+    });
+  }
+
+  // Share card
+  const btnShareCard = document.getElementById('btnShareCard');
+  if (btnShareCard) btnShareCard.addEventListener('click', showShareCard);
+
+  const btnCloseShareCard = document.getElementById('btnCloseShareCard');
+  const shareCardOverlay = document.getElementById('shareCardOverlay');
+  if (btnCloseShareCard && shareCardOverlay) {
+    btnCloseShareCard.addEventListener('click', () => shareCardOverlay.classList.remove('show'));
+    shareCardOverlay.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) shareCardOverlay.classList.remove('show');
+    });
+  }
+
+  const btnDownloadShareCard = document.getElementById('btnDownloadShareCard');
+  if (btnDownloadShareCard) {
+    btnDownloadShareCard.addEventListener('click', () => {
+      const canvas = document.getElementById('shareCardCanvas');
+      if (!canvas) return;
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'bass-rpg-' + (lastSettlementData ? lastSettlementData.dateStr : 'share') + '.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
     });
   }
 
