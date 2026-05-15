@@ -3474,21 +3474,26 @@ function showCharCreation() {
   document.getElementById('promptTemplate').textContent = CHAR_PROMPT;
   renderCharSliders();
 
+  const btnQuickStart = document.getElementById('btnQuickStart');
+  const detailsEl = btnQuickStart ? btnQuickStart.parentElement.querySelector('details') : null;
+
   if (reEvaluateMode) {
     document.querySelector('.char-creation-modal h2').textContent = '🔄 重新评估你的水平（三个分支同步更新）';
     document.querySelector('.char-creation-modal .subtitle').textContent = 'AI 将根据你的描述重新打分，三支职业同步生效';
-    document.querySelector('.char-tab[data-tab="manual"]').style.display = 'none';
+    if (btnQuickStart) btnQuickStart.style.display = 'none';
+    if (btnQuickStart && btnQuickStart.nextElementSibling) btnQuickStart.nextElementSibling.style.display = 'none';
+    if (detailsEl) { detailsEl.open = true; detailsEl.querySelector('.char-tab[data-tab="manual"]').style.display = 'none'; }
     document.querySelector('.char-tab[data-tab="ai"]').classList.add('active');
     document.getElementById('charTabAI').classList.add('active');
     document.getElementById('charTabManual').classList.remove('active');
-    document.getElementById('btnQuickStart').parentElement.style.display = 'none';
     document.getElementById('charJsonInput').value = '';
     document.getElementById('charJsonError').classList.remove('show');
   } else {
-    document.querySelector('.char-creation-modal h2').textContent = '🎵 创建你的贝斯手角色（三个分支同时生成）';
-    document.querySelector('.char-creation-modal .subtitle').textContent = '同一套初始评分应用于爵士、流行、霓虹三个方向，之后各自独立成长';
-    document.querySelector('.char-tab[data-tab="manual"]').style.display = '';
-    document.getElementById('btnQuickStart').parentElement.style.display = '';
+    document.querySelector('.char-creation-modal h2').textContent = '🎸 贝斯练习RPG';
+    document.querySelector('.char-creation-modal .subtitle').textContent = '练琴升级，每天变强一点';
+    if (btnQuickStart) btnQuickStart.style.display = '';
+    if (btnQuickStart && btnQuickStart.nextElementSibling) btnQuickStart.nextElementSibling.style.display = '';
+    if (detailsEl) detailsEl.querySelector('.char-tab[data-tab="manual"]').style.display = '';
   }
 }
 
