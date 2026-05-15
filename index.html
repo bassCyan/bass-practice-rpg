@@ -3396,12 +3396,7 @@ function calcDataSize() {
 function updateDataSize() {
   const el = document.getElementById('dataSize');
   if (!el) return;
-  const size = calcDataSize();
-  const lastExport = parseInt(localStorage.getItem('bass_last_export') || '0');
-  const daysSince = Math.floor((Date.now() - lastExport) / (1000 * 60 * 60 * 24));
-  const warn = daysSince >= 7 ? ' ⚠️' : '';
-  el.textContent = '💾 ' + size + warn;
-  el.title = daysSince >= 7 ? `已${daysSince}天未备份，建议导出保存数据` : '';
+  el.textContent = '💾 ' + calcDataSize();
 }
 
 function exportAllData() {
