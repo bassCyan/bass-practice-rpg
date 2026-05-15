@@ -184,11 +184,6 @@
     background: var(--accent);
     margin-top: 2px;
   }
-  .cal-mood {
-    font-size: 0.7em;
-    position: absolute;
-    bottom: 3px;
-  }
 
   /* ===== Modal ===== */
   .modal-overlay {
@@ -222,7 +217,8 @@
     .btn-row { gap: 6px; margin-top: 12px; }
     .btn { padding: 7px 14px; font-size: 0.75em; }
     .btn-sm { padding: 3px 8px; font-size: 0.6em; }
-    .mood-btn { font-size: 0.8em; padding: 6px 10px; }
+    .focus-grid { gap: 4px; }
+    .focus-btn { padding: 8px 4px; font-size: 0.6em; }
   }
 
   .modal {
@@ -266,20 +262,33 @@
   }
   .form-group textarea { min-height: 80px; }
 
-  .mood-selector { display: flex; gap: 6px; flex-direction: column; }
-  .mood-btn {
-    font-size: 1em;
-    padding: 8px 12px;
+  .focus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .focus-btn {
+    position: relative;
+    padding: 10px 8px;
     cursor: pointer;
     background: var(--pixel-dark);
     border: 3px solid var(--border);
-    text-align: left;
-    width: 100%;
-    font-family: monospace;
-    letter-spacing: 2px;
+    text-align: center;
+    font-family: var(--font-ui);
+    font-size: 0.75em;
+    color: var(--text2);
+    transition: none;
   }
-  .mood-btn:hover { background: var(--surface2); border-color: var(--accent); }
-  .mood-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.15); color: var(--accent); }
+  .focus-btn:hover { background: var(--surface2); border-color: var(--accent); }
+  .focus-btn.selected { border-color: var(--accent); background: rgba(232,168,64,0.15); color: var(--accent); }
+  .focus-btn .focus-order {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-family: var(--font-pixel);
+    font-size: 0.7em;
+    color: #ffe040;
+  }
 
   .btn-row { display: flex; gap: 10px; margin-top: 20px; }
   .btn {
@@ -311,8 +320,6 @@
   .day-detail.show { display: block; }
   .day-detail h4 { margin-bottom: 12px; }
   .day-detail .meta { color: var(--text2); font-size: 0.9em; margin-bottom: 4px; }
-  .day-detail .content { margin-top: 8px; line-height: 1.6; white-space: pre-wrap; }
-  .day-detail .mood-big { font-size: 2em; }
 
   /* ===== Stats ===== */
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
@@ -326,9 +333,6 @@
   .stat-num { font-size: 2em; font-weight: 800; color: var(--accent); }
   .stat-label { font-size: 0.8em; color: var(--text2); margin-top: 4px; }
 
-  .mood-bar { display: flex; gap: 4px; align-items: flex-end; height: 80px; margin-top: 10px; }
-  .mood-bar-item { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-width: 20px; transition: height 0.3s; }
-  .mood-bar-label { text-align: center; font-size: 0.8em; color: var(--text2); margin-top: 6px; }
 
   /* ===== Practice Plan ===== */
   .plan-section {
@@ -832,6 +836,77 @@
   50% { transform: scale(1.08); }
 }
 
+/* Level-up overlay */
+.levelup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.levelup-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.levelup-title {
+  font-family: var(--font-pixel);
+  font-size: 2em;
+  color: #ffe040;
+  text-shadow: 0 0 20px rgba(255,224,64,0.8), 0 0 40px rgba(255,224,64,0.4);
+  animation: levelupGlow 0.5s steps(2) infinite alternate, levelupBounce 0.6s ease-out;
+}
+@keyframes levelupGlow {
+  from { text-shadow: 0 0 20px rgba(255,224,64,0.8), 0 0 40px rgba(255,224,64,0.4); }
+  to { text-shadow: 0 0 30px rgba(255,224,64,1), 0 0 60px rgba(255,224,64,0.6); }
+}
+@keyframes levelupBounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.levelup-detail {
+  font-family: var(--font-ui);
+  font-size: 1em;
+  color: var(--text);
+  margin-top: 16px;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out 0.3s forwards;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.levelup-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.levelup-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffe040;
+  animation: particleFall 1.5s ease-out forwards;
+}
+@keyframes particleFall {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(100px) scale(0); }
+}
+.levelup-continue {
+  margin-top: 30px;
+  font-family: var(--font-ui);
+  font-size: 0.7em;
+  color: var(--text2);
+  animation: blink 1.5s steps(2) infinite;
+}
+
 /* Settlement bars */
 .settlement-bars { margin-bottom: 12px; padding: 0 8px; }
 .settlement-bar-row {
@@ -1146,6 +1221,7 @@
     </div>
     <div class="data-size" id="dataSize">--</div>
     <button class="btn btn-ghost btn-sm btn-data-io" id="btnHelp" style="margin-top:8px;">❓ 分值说明</button>
+    <button class="btn btn-ghost btn-sm btn-data-io" id="btnChangelog" style="margin-top:6px;opacity:0.6;">📋 更新日志</button>
   </div>
 </nav>
 
@@ -1193,6 +1269,9 @@
   <!-- CALENDAR PAGE -->
   <div class="page" id="page-calendar">
     <h2>📅 练琴日历</h2>
+    <div id="todayBanner" style="display:none;background:rgba(240,176,48,0.1);border:2px solid rgba(240,176,48,0.3);padding:10px 14px;margin-bottom:14px;font-family:var(--font-ui);font-size:0.75em;text-align:center;cursor:pointer;">
+      🎸 想练就练，不开心就休息哦
+    </div>
     <div class="cal-header">
       <button class="cal-nav-btn" id="btnPrevMonth">◀ 上月</button>
       <span class="cal-month" id="calMonthLabel"></span>
@@ -1200,13 +1279,9 @@
     </div>
     <div class="cal-grid" id="calGrid"></div>
     <div class="day-detail" id="dayDetail">
-      <div style="display:flex;justify-content:space-between;align-items:start;">
-        <div>
-          <h4 id="detailDate"></h4>
-          <div class="meta" id="detailTime"></div>
-          <div class="content" id="detailContent"></div>
-        </div>
-        <div class="mood-big" id="detailMood"></div>
+      <div>
+        <h4 id="detailDate"></h4>
+        <div class="meta" id="detailTime"></div>
       </div>
       <div class="btn-row" style="margin-top:14px;">
         <button class="btn btn-primary" id="btnEditDay">✏️ 编辑</button>
@@ -1289,46 +1364,46 @@
 <!-- SETTLEMENT MODAL -->
 <!-- CHARACTER CREATION OVERLAY -->
 <div class="char-creation-overlay" id="charCreationOverlay">
-  <div class="char-creation-modal">
-    <h2>🎵 创建你的爵士乐手角色</h2>
-    <p class="subtitle">让 AI 根据你的真实水平给出初始经验值</p>
+  <div class="char-creation-modal" style="text-align:center;position:relative;">
+    <button id="btnCloseCharCreation" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:1.4em;cursor:pointer;line-height:1;z-index:1;" title="关闭">&times;</button>
+    <h2>🎸 贝斯练习RPG</h2>
+    <p class="subtitle" style="margin-bottom:24px;">练琴升级，每天变强一点</p>
 
-    <div class="char-tabs">
-      <button class="char-tab active" data-tab="ai">🤖 AI 评估（推荐）</button>
-      <button class="char-tab" data-tab="manual">🎚️ 手动设置</button>
-    </div>
+    <button class="btn btn-primary" id="btnQuickStart" style="font-size:1.1em;padding:14px 36px;margin-bottom:20px;">⚡ 开始冒险</button>
+    <p style="font-size:0.6em;color:var(--text2);margin-bottom:20px;">零基础也能开始，边练边升级</p>
 
-    <!-- Tab: AI Eval -->
-    <div class="char-tab-content active" id="charTabAI">
-      <div style="background:rgba(240,176,48,0.1);border:2px solid var(--accent);padding:14px 16px;margin-bottom:14px;font-family:var(--font-ui);font-size:0.72em;line-height:2;">
-        <p style="color:var(--accent);font-weight:700;margin-bottom:6px;">📋 操作步骤（3步）：</p>
-        <p>❶ 点击下方 <strong style="color:var(--accent);">📋 一键复制</strong> 按钮复制 Prompt</p>
-        <p>❷ 粘贴到 <a href="https://chat.deepseek.com" target="_blank" style="color:var(--blue);font-weight:700;">DeepSeek 网页版</a>（免费），在 Prompt 的填空处<strong style="color:var(--accent);">填入你的六维自评分和学琴背景</strong>，它会返回6个数字</p>
-        <p>❸ 把 DeepSeek 返回的 JSON <strong style="color:var(--accent);">完整粘贴到下方文本框</strong>，点导入</p>
+    <details style="text-align:left;margin-top:10px;">
+      <summary style="font-size:0.7em;color:var(--text2);cursor:pointer;font-family:var(--font-ui);padding:8px 0;">🎚️ 有基础？点这里设置初始等级</summary>
+      <div style="padding:12px 0;">
+        <div class="char-tabs">
+          <button class="char-tab active" data-tab="ai">🤖 AI 评估</button>
+          <button class="char-tab" data-tab="manual">🎚️ 手动设置</button>
+        </div>
+        <div class="char-tab-content active" id="charTabAI">
+          <div style="background:rgba(240,176,48,0.1);border:2px solid var(--accent);padding:14px 16px;margin-bottom:14px;font-family:var(--font-ui);font-size:0.72em;line-height:2;">
+            <p style="color:var(--accent);font-weight:700;margin-bottom:6px;">📋 操作步骤：</p>
+            <p>❶ 复制 Prompt → 粘贴到 <a href="https://chat.deepseek.com" target="_blank" style="color:var(--blue);font-weight:700;">DeepSeek</a></p>
+            <p>❷ 填入你的自评背景 → 拿到 JSON</p>
+            <p>❸ 粘贴回下方 → 导入</p>
+          </div>
+          <div class="prompt-template" id="promptTemplate"></div>
+          <button class="btn btn-ghost btn-sm copy-btn" id="btnCopyPrompt">📋 一键复制</button>
+          <textarea class="char-textarea" id="charJsonInput" placeholder="把 DeepSeek 返回的 JSON 粘贴到这里..."></textarea>
+          <p class="char-error" id="charJsonError"></p>
+          <button class="btn btn-primary" id="btnImportJson">📥 导入</button>
+        </div>
+        <div class="char-tab-content" id="charTabManual">
+          <div class="char-sliders" id="charSliders"></div>
+          <button class="btn btn-primary" id="btnManualConfirm">✅ 确认</button>
+        </div>
       </div>
-      <div class="prompt-template" id="promptTemplate"></div>
-      <button class="btn btn-ghost btn-sm copy-btn" id="btnCopyPrompt">📋 一键复制</button>
-
-      <textarea class="char-textarea" id="charJsonInput" placeholder="把 DeepSeek 返回的 JSON 粘贴到这里..."></textarea>
-      <p class="char-error" id="charJsonError"></p>
-      <button class="btn btn-primary" id="btnImportJson">📥 导入</button>
-    </div>
-
-    <!-- Tab: Manual -->
-    <div class="char-tab-content" id="charTabManual">
-      <div class="char-sliders" id="charSliders"></div>
-      <button class="btn btn-primary" id="btnManualConfirm">✅ 确认</button>
-    </div>
-
-    <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);">
-      <p style="font-size:0.65em;color:var(--text2);margin-bottom:8px;font-family:var(--font-ui);">完全零基础？</p>
-      <button class="btn btn-ghost btn-sm" id="btnQuickStart">🌱 从头开始（默认新手值）</button>
-    </div>
+    </details>
   </div>
 </div>
 
 <!-- FOOTER -->
 <footer class="footer">© 2026 纪梓铤 | 数据仅存储于你的浏览器，不上传任何服务器<br>
+<span style="opacity:0.4;font-size:0.9em;">想练就练，不开心就休息，对自己好一点 💛</span><br>
 <span id="footerExportImport" style="display:none;">
   <button class="btn btn-ghost btn-sm" id="btnExport2" style="font-size:0.9em;margin:4px;">📤 导出</button>
   <button class="btn btn-ghost btn-sm" id="btnImport2" style="font-size:0.9em;margin:4px;">📥 导入</button>
@@ -1337,6 +1412,14 @@
 <span style="opacity:0.5;">💡 数据存在浏览器本地。换设备/换浏览器数据不互通，可用导出导入备份</span></footer>
 
 <input type="file" id="fileImport" accept=".json" style="display:none;">
+
+<!-- LEVEL UP OVERLAY -->
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-particles" id="levelupParticles"></div>
+  <div class="levelup-title">⚡ LEVEL UP! ⚡</div>
+  <div class="levelup-detail" id="levelupDetail"></div>
+  <div class="levelup-continue">点击任意位置继续</div>
+</div>
 
 <div class="modal-overlay" id="settlementOverlay">
   <div class="modal settlement-modal" id="settlementModal">
@@ -1365,17 +1448,60 @@
       <div class="btn-row" style="margin-top:14px; justify-content:center;">
         <button class="btn btn-ghost btn-sm" id="btnRefTable2">📋 查看评分参照表</button>
         <button class="btn btn-primary" id="btnCloseSettlement">👍 知道了</button>
-        <button class="btn btn-ghost btn-sm" id="btnShareCard">📸 生成分享图</button>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="settlement-screen" id="settlementShare" style="text-align:center;">
-      <canvas id="shareCanvas" width="400" height="500" style="max-width:100%;border:3px solid var(--border);image-rendering:pixelated;"></canvas>
-      <p style="font-size:0.55em;color:var(--text2);margin-top:4px;font-family:var(--font-ui);">📱 手机长按图片即可保存到相册</p>
-      <div class="btn-row" style="margin-top:8px;justify-content:center;">
-        <button class="btn btn-primary btn-sm" id="btnDownloadCard">📥 保存图片</button>
-        <button class="btn btn-ghost btn-sm" id="btnCloseShare">关闭</button>
+<!-- CHANGELOG MODAL -->
+<div class="modal-overlay" id="changelogOverlay" style="z-index:300;">
+  <div class="modal" style="max-width:500px; max-height:80vh; overflow-y:auto; position:relative;">
+    <button id="btnCloseChangelog" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text2);font-size:1.4em;cursor:pointer;line-height:1;z-index:1;" title="关闭">&times;</button>
+    <h3 style="margin-bottom:16px;">📋 更新日志</h3>
+    <div style="font-family:var(--font-ui);font-size:0.75em;line-height:1.8;color:var(--text2);">
+
+      <div style="margin-bottom:20px;padding:12px;background:rgba(240,176,48,0.08);border-left:3px solid var(--accent);">
+        <h4 style="color:var(--accent);margin-bottom:8px;">v2.0 — 大版本更新</h4>
+        <p><strong>🎯 打卡流程极简化</strong></p>
+        <ul style="margin:8px 0;padding-left:20px;">
+          <li>去掉标签、心情、内容填写</li>
+          <li>只输时长 + 选练了什么维度</li>
+          <li>多选支持优先级排序，XP 按优先级分配</li>
+          <li>3 秒完成打卡</li>
+        </ul>
+        <p><strong>⚡ 升级特效</strong></p>
+        <ul style="margin:8px 0;padding-left:20px;">
+          <li>维度升级时全屏庆祝动画 + 粒子效果</li>
+          <li>像素风 LEVEL UP 弹窗</li>
+        </ul>
+        <p><strong>🎮 新用户友好</strong></p>
+        <ul style="margin:8px 0;padding-left:20px;">
+          <li>角色创建一键开始，AI 评估降为可选</li>
+          <li>去掉所有压力元素：不练琴不掉经验</li>
+          <li>想练就练，不开心就休息 💛</li>
+        </ul>
+        <p><strong>📱 手机体验优化</strong></p>
+        <ul style="margin:8px 0;padding-left:20px;">
+          <li>禁止双指缩放，防触摸穿透</li>
+          <li>弹窗全面缩小适配手机</li>
+          <li>心情按钮尺寸均衡</li>
+        </ul>
+        <p><strong>🗑️ 移除功能</strong></p>
+        <ul style="margin:8px 0;padding-left:20px;">
+          <li>分享图功能（太丑了）</li>
+          <li>心情记录和标签系统</li>
+          <li>XP 衰减机制</li>
+        </ul>
       </div>
+
+      <div style="margin-bottom:16px;">
+        <h4 style="color:var(--text2);margin-bottom:4px;">v1.0 — 初始版本</h4>
+        <p>六维属性系统、三职业分支、日历打卡、练琴计划、节拍器、RPG 等级</p>
+      </div>
+
+    </div>
+    <div class="btn-row" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" id="btnCloseChangelog2">知道了</button>
     </div>
   </div>
 </div>
@@ -1406,13 +1532,11 @@
     <div style="font-family:var(--font-ui);font-size:0.75em;line-height:1.8;color:var(--text2);">
       <p>每次练琴打卡获得的经验值由以下公式计算：</p>
       <p style="color:var(--accent);font-family:monospace;font-size:0.9em;text-align:center;padding:8px 0;">
-        XP = 标签权重 × 练琴时长 × 时间占比 × 心情加成
+        XP = 5 × 时长系数 × 衰减系数 × 优先级权重
       </p>
-      <p><strong>标签权重：</strong>不同练琴类型对不同维度的基础加成不同（如"琶音"侧重技术+和声）</p>
-      <p><strong>练琴时长：</strong>练得越久经验越多（纯练琴时间，玩手机不算噢）</p>
-      <p><strong>今日重点：</strong>选择一个侧重的练习方向，系统自动分配各维度权重</p>
-      <p><strong>心情加成：</strong>:D +5% :) +2% :| x( :( 不加成（差心情不扣分）</p>
-      <p style="margin-top:8px;color:var(--text2);">💡 超过5天不练某项维度会开始衰减（每天-2%，不低于当前等级底线）</p>
+      <p><strong>时长系数：</strong>练得越久经验越多（30分钟 = 1x 基础系数）</p>
+      <p><strong>优先级权重：</strong>选择的练琴维度按点击顺序分配权重，排第一的拿最多XP</p>
+      <p><strong>衰减系数：</strong>高等级（6级以上）经验获取降低为60%</p>
     </div>
     <div class="btn-row" style="justify-content:center;margin-top:16px;">
       <button class="btn btn-primary" id="btnCloseHelp">知道了</button>
@@ -1429,33 +1553,13 @@
       <input type="date" id="inputDate">
     </div>
     <div class="form-group">
-      <label>⏱️ 练琴时长（分钟） <span style="font-size:0.7em;color:var(--text2);font-weight:400;">— 纯练琴时间，玩手机不算噢</span></label>
+      <label>⏱️ 练琴时长（分钟）</label>
       <input type="number" id="inputTime" placeholder="例如：60" min="1" max="600">
     </div>
     <div class="form-group">
-      <label>🎯 练琴内容</label>
-      <textarea id="inputContent" placeholder="今天练了什么？Walking Bass、扒谱、即兴..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>🏷️ 练琴标签（可多选）</label>
-      <div class="tag-selector" id="tagSelector">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>🎯 今日重点</label>
-      <div class="tag-selector" id="focusPresets" style="margin-bottom:4px;">
-      </div>
-      <p style="font-size:0.55em;color:var(--text2);margin-top:4px;font-family:var(--font-ui);">选一个今天最侧重的方向，系统自动分配维度权重</p>
-    </div>
-    <div class="form-group">
-      <label>😊 练琴心情</label>
-      <div class="mood-selector" id="moodSelector">
-        <button class="mood-btn" data-mood=":D" title="超爽">:D   超爽</button>
-        <button class="mood-btn" data-mood=":)" title="不错">:)   不错</button>
-        <button class="mood-btn" data-mood=":|" title="一般">:|   一般</button>
-        <button class="mood-btn" data-mood="x(" title="烦躁">x(   烦躁</button>
-        <button class="mood-btn" data-mood=":(" title="沮丧">:(   沮丧</button>
-      </div>
+      <label>🎯 今天练了什么？</label>
+      <div class="focus-grid" id="focusGrid"></div>
+      <p style="font-size:0.55em;color:var(--text2);margin-top:4px;font-family:var(--font-ui);">可多选，点击顺序 = XP分配优先级，再次点击取消</p>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="btnSave">💾 保存</button>
@@ -1524,49 +1628,6 @@ const LEVEL_NAMES = [
   '高级I','高级II','高级III'
 ];
 
-const BRANCH_TAG_WEIGHTS = {
-  jazz: {
-    arpeggio:  { tech:6, harmony:2 },
-    groove:    { tech:2, rhythm:3, improv:2, repertoire:1 },
-    ear:       { ear:6, repertoire:2 },
-    metronome: { rhythm:6 },
-    improv:    { improv:5, tech:2 },
-    theory:    { harmony:6 },
-    song:      { repertoire:4, rhythm:2, improv:1 },
-    slap:      { tech:3, rhythm:2 }
-  },
-  pop: {
-    arpeggio:  { tech:5, harmony:2 },
-    groove:    { rhythm:4, repertoire:3, tech:1 },
-    ear:       { ear:4, repertoire:2 },
-    metronome: { rhythm:5 },
-    improv:    { improv:2, tech:1 },
-    theory:    { harmony:5 },
-    song:      { repertoire:5, rhythm:2, tech:1 },
-    slap:      { tech:4, rhythm:3 }
-  },
-  neon: {
-    arpeggio:  { tech:5, rhythm:2 },
-    groove:    { rhythm:5, tech:2 },
-    ear:       { ear:3, repertoire:2 },
-    metronome: { rhythm:6, tech:1 },
-    improv:    { tech:3, improv:3 },
-    theory:    { harmony:3 },
-    song:      { repertoire:3, rhythm:3, tech:1 },
-    slap:      { tech:6, rhythm:3 }
-  }
-};
-
-const TAG_OPTIONS = [
-  { id:'arpeggio',  label:'🎹 音阶/琶音' },
-  { id:'groove',    label:'🎸 律动/Groove' },
-  { id:'ear',       label:'🎧 扒谱/练耳' },
-  { id:'metronome', label:'⏱️ 节奏训练' },
-  { id:'improv',    label:'🎵 即兴/Solo' },
-  { id:'theory',    label:'📚 乐理/和声' },
-  { id:'song',      label:'🎤 曲目跟弹' },
-  { id:'slap',      label:'🖐️ Slap/击勾' }
-];
 
 function defaultRpgState() {
   return {
@@ -1642,32 +1703,13 @@ function getLevelFloor(xp, branch) {
   return thresholds[getLevel(xp, branch)];
 }
 
-function calcXpGain(baseXP, minutes, currentLevel, timeShare, moodMult) {
+function calcXpGain(minutes, currentLevel, priorityWeight) {
   const timeMult = Math.max(0.1, minutes / 30);
   const decayMult = currentLevel >= 6 ? 0.6 : 1.0;
-  const shareMult = Math.max(0.05, timeShare || 0); // minimum 5% if tagged
-  return Math.round(baseXP * timeMult * decayMult * shareMult * (moodMult || 1));
+  return Math.round(5 * timeMult * decayMult * priorityWeight);
 }
 
 function applyDecay(rpg, branch) {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-  for (const dim of DIM_KEYS) {
-    const lastDate = rpg.lastPractice[dim];
-    if (!lastDate) continue;
-    if (lastDate === todayStr) continue;
-
-    const last = new Date(lastDate);
-    const daysSince = (now - last) / (1000 * 60 * 60 * 24);
-    if (daysSince > 5) {
-      const decayDays = Math.floor(daysSince - 5);
-      const floor = getLevelFloor(rpg.scores[dim], branch);
-      for (let i = 0; i < decayDays; i++) {
-        rpg.scores[dim] = Math.max(floor, Math.round(rpg.scores[dim] * 0.98));
-      }
-    }
-  }
   return rpg;
 }
 
@@ -1707,7 +1749,6 @@ const now = new Date();
 currentYear = now.getFullYear();
 currentMonth = now.getMonth() + 1; // 1-based
 
-const MOODS = [':D', ':)', ':|', 'x(', ':('];
 
 // ============================================================
 // NAVIGATION
@@ -1779,6 +1820,15 @@ function renderCalendar() {
     grid.appendChild(createDayEl(d, ds, true, data));
   }
 
+  // Today banner
+  const banner = document.getElementById('todayBanner');
+  if (banner) {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const todayChecked = !!data[todayStr];
+    banner.style.display = todayChecked ? 'none' : 'block';
+    banner.onclick = () => openModal(todayStr);
+  }
+
   updateStreak();
   showDayDetail();
 }
@@ -1794,10 +1844,6 @@ function createDayEl(dayNum, dateStr, isOther, data) {
     const dot = document.createElement('div');
     dot.className = 'cal-dot';
     el.appendChild(dot);
-    const moodSpan = document.createElement('span');
-    moodSpan.className = 'cal-mood';
-    moodSpan.textContent = data[dateStr].mood;
-    el.appendChild(moodSpan);
   }
 
   el.addEventListener('click', () => {
@@ -1831,57 +1877,35 @@ function showDayDetail() {
   detail.classList.add('show');
   document.getElementById('detailDate').textContent = selectedDate;
   document.getElementById('detailTime').textContent = `⏱️ 练琴 ${c.time} 分钟`;
-  document.getElementById('detailContent').textContent = c.content || '（未填写内容）';
-  document.getElementById('detailMood').textContent = c.mood || '';
+  const detailContent = document.getElementById('detailContent');
+  if (detailContent) detailContent.textContent = '';
 }
 
 // ============================================================
 // MODAL
 // ============================================================
-function renderTagSelector(existingTags) {
-  const container = document.getElementById('tagSelector');
+let focusOrder = []; // tracks selected dims in click order
+
+function renderFocusButtons(existingFocus) {
+  const container = document.getElementById('focusGrid');
   if (!container) return;
-  container.innerHTML = TAG_OPTIONS.map(t => {
-    const sel = existingTags && existingTags.includes(t.id) ? ' selected' : '';
-    return `<span class="tag-chip${sel}" data-tag="${t.id}">${t.label}</span>`;
+  focusOrder = existingFocus ? [...existingFocus] : [];
+  container.innerHTML = DIM_KEYS.map(key => {
+    const idx = focusOrder.indexOf(key);
+    const sel = idx >= 0 ? ' selected' : '';
+    const orderHtml = idx >= 0 ? `<span class="focus-order">${idx + 1}</span>` : '';
+    return `<div class="focus-btn${sel}" data-dim="${key}">${orderHtml}${DIM_EMOJI[key]} ${DIM_LABELS[key]}</div>`;
   }).join('');
-  container.querySelectorAll('.tag-chip').forEach(chip => {
-    chip.addEventListener('click', () => chip.classList.toggle('selected'));
-  });
-}
-
-const FOCUS_PRESETS = [
-  { id:'balanced', label:'⚖️ 均衡练习', dist:{ tech:17, rhythm:17, ear:16, harmony:17, improv:16, repertoire:17 } },
-  { id:'tech',     label:'🔧 偏重技术', dist:{ tech:35, rhythm:15, ear:10, harmony:15, improv:10, repertoire:15 } },
-  { id:'theory',   label:'📚 偏重乐理', dist:{ tech:10, rhythm:10, ear:15, harmony:35, improv:15, repertoire:15 } },
-  { id:'groove',   label:'🎤 偏重实战', dist:{ tech:15, rhythm:20, ear:10, harmony:10, improv:10, repertoire:35 } },
-  { id:'improv',   label:'🎵 偏重即兴', dist:{ tech:10, rhythm:10, ear:15, harmony:15, improv:35, repertoire:15 } },
-];
-
-function renderPracticePresets(existingDist) {
-  const container = document.getElementById('focusPresets');
-  if (!container) return;
-  // Find matching preset or default to balanced
-  let activeId = 'balanced';
-  if (existingDist) {
-    for (const preset of FOCUS_PRESETS) {
-      let match = true;
-      for (const dim of DIM_KEYS) {
-        if (Math.abs((preset.dist[dim] || 0) - (existingDist[dim] || 0)) > 2) { match = false; break; }
+  container.querySelectorAll('.focus-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dim = btn.dataset.dim;
+      const idx = focusOrder.indexOf(dim);
+      if (idx >= 0) {
+        focusOrder.splice(idx, 1);
+      } else {
+        focusOrder.push(dim);
       }
-      if (match) { activeId = preset.id; break; }
-    }
-  }
-
-  container.innerHTML = FOCUS_PRESETS.map(p => {
-    const sel = p.id === activeId ? ' selected' : '';
-    return `<span class="tag-chip${sel}" data-preset="${p.id}">${p.label}</span>`;
-  }).join('');
-
-  container.querySelectorAll('.tag-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      container.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
+      renderFocusButtons(focusOrder.length > 0 ? focusOrder : null);
     });
   });
 }
@@ -1892,16 +1916,7 @@ function openModal(dateStr) {
   document.getElementById('modalTitle').textContent = existing ? '✏️ 编辑打卡' : '✏️ 练琴打卡';
   document.getElementById('inputDate').value = dateStr;
   document.getElementById('inputTime').value = existing ? existing.time : '';
-  document.getElementById('inputContent').value = existing ? existing.content : '';
-  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-  if (existing && existing.mood) {
-    const moodBtn = document.querySelector(`.mood-btn[data-mood="${existing.mood}"]`);
-    if (moodBtn) moodBtn.classList.add('selected');
-  }
-  const existingTags = existing ? existing.tags : [];
-  const existingDist = existing ? existing.timeDistribution : null;
-  renderTagSelector(existingTags);
-  renderPracticePresets(existingDist);
+  renderFocusButtons(existing && existing.focusOrder ? existing.focusOrder : null);
   document.getElementById('modalOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
   document.getElementById('inputTime').focus();
@@ -1919,36 +1934,20 @@ document.getElementById('modalOverlay').addEventListener('click', (e) => {
 
 document.getElementById('btnCancel').addEventListener('click', closeModal);
 
-document.querySelectorAll('.mood-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
-});
-
 document.getElementById('btnSave').addEventListener('click', () => {
   const dateStr = document.getElementById('inputDate').value;
   const time = parseInt(document.getElementById('inputTime').value);
-  const content = document.getElementById('inputContent').value.trim();
-  const moodBtn = document.querySelector('.mood-btn.selected');
-  const mood = moodBtn ? moodBtn.dataset.mood : '';
 
   if (!dateStr) { alert('请选择日期'); return; }
   if (!time || time < 1) { alert('请填写练琴时长'); return; }
 
-  // Collect tags
-  const tags = [];
-  const tagChips = document.querySelectorAll('#tagSelector .tag-chip.selected');
-  tagChips.forEach(c => tags.push(c.dataset.tag));
+  const selectedDims = focusOrder.length > 0 ? [...focusOrder] : [...DIM_KEYS];
 
-  // Get time distribution from selected preset
-  const selectedPreset = document.querySelector('#focusPresets .tag-chip.selected');
-  const presetId = selectedPreset ? selectedPreset.dataset.preset : 'balanced';
-  const preset = FOCUS_PRESETS.find(p => p.id === presetId) || FOCUS_PRESETS[0];
-  const timeDistribution = { ...preset.dist };
-
-  // Mood multiplier
-  const moodMult = { ':D': 1.05, ':)': 1.02, ':|': 1.0, 'x(': 1.0, ':(': 1.0 }[mood] || 1.0;
+  // Priority weights: first selected gets most XP
+  const n = selectedDims.length;
+  const sumN = n * (n + 1) / 2;
+  const weights = {};
+  selectedDims.forEach((dim, i) => { weights[dim] = (n - i) / sumN; });
 
   // Calculate XP for all 3 branches
   const xpGainedByBranch = {};
@@ -1958,35 +1957,17 @@ document.getElementById('btnSave').addEventListener('click', () => {
     rpg = applyDecay(rpg, branch);
 
     const xpGained = {};
-    for (const tag of tags) {
-      const weights = BRANCH_TAG_WEIGHTS[branch][tag];
-      if (!weights) continue;
-      for (const [dim, baseXP] of Object.entries(weights)) {
-        const timeShare = (timeDistribution[dim] || 0) / 100;
-        const currentLevel = getLevel(rpg.scores[dim], branch);
-        const gain = calcXpGain(baseXP, time, currentLevel, timeShare, moodMult);
-        if (gain > 0) {
-          xpGained[dim] = (xpGained[dim] || 0) + gain;
-          rpg.scores[dim] += gain;
-          rpg.lastPractice[dim] = dateStr;
-        }
+    for (const dim of selectedDims) {
+      const currentLevel = getLevel(rpg.scores[dim], branch);
+      const gain = calcXpGain(time, currentLevel, weights[dim]);
+      if (gain > 0) {
+        xpGained[dim] = gain;
+        rpg.scores[dim] += gain;
+        rpg.lastPractice[dim] = dateStr;
       }
     }
 
-    // If no tags selected, dims with >10% time share get small base XP
-    if (tags.length === 0) {
-      for (const dim of DIM_KEYS) {
-        const timeShare = (timeDistribution[dim] || 0) / 100;
-        if (timeShare > 0.1) {
-          const gain = calcXpGain(2, time, getLevel(rpg.scores[dim], branch), timeShare, moodMult);
-          xpGained[dim] = (xpGained[dim] || 0) + gain;
-          rpg.scores[dim] += gain;
-          rpg.lastPractice[dim] = dateStr;
-        }
-      }
-    }
-
-    rpg.history.push({ date: dateStr, tags, timeDistribution, xpGained, time, mood, moodMult });
+    rpg.history.push({ date: dateStr, focusOrder: selectedDims, xpGained, time });
     if (rpg.history.length > 365) rpg.history = rpg.history.slice(-365);
     saveBranchState(branch, rpg);
     xpGainedByBranch[branch] = xpGained;
@@ -1996,7 +1977,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
   // Save checkin data with per-branch XP
   setCheckin(dateStr, {
-    time, content, mood, tags, timeDistribution,
+    time, focusOrder: selectedDims,
     xpGainedByBranch,
     updatedAt: new Date().toISOString()
   });
@@ -2007,9 +1988,8 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
   // Show settlement screen
   const hasXP = Object.values(xpGainedByBranch).some(g => Object.keys(g).length > 0);
-  const hasSignificantTime = Object.values(timeDistribution).some(v => v > 10);
-  if (hasXP || hasSignificantTime) {
-    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood, time);
+  if (hasXP) {
+    showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time);
   }
 });
 
@@ -2088,43 +2068,25 @@ function renderStats() {
   const data = loadCheckins();
   const ym = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
   let totalDays = 0, totalMin = 0;
-  const moodCount = {};
 
   Object.entries(data).forEach(([dateStr, c]) => {
     if (!dateStr.startsWith(ym)) return;
     totalDays++;
     totalMin += c.time || 0;
-    if (c.mood) {
-      moodCount[c.mood] = (moodCount[c.mood] || 0) + 1;
-    }
   });
 
   document.getElementById('statTotalDays').textContent = totalDays;
   document.getElementById('statTotalMin').textContent = totalMin;
   document.getElementById('statAvgMin').textContent = totalDays > 0 ? Math.round(totalMin / totalDays) : 0;
 
-  // Mood chart
   const chart = document.getElementById('moodChart');
-  if (totalDays === 0) {
-    chart.innerHTML = '<p style="color:var(--text2);margin-top:10px;">本月暂无打卡记录</p>';
-    return;
+  if (chart) {
+    chart.innerHTML = totalDays === 0
+      ? '<p style="color:var(--text2);margin-top:10px;">本月暂无打卡记录</p>'
+      : `<p style="color:var(--text2);margin-top:10px;">本月已打卡 ${totalDays} 天，共 ${totalMin} 分钟</p>`;
   }
 
-  const maxCount = Math.max(...Object.values(moodCount), 1);
-  let html = '<div class="mood-bar">';
-  MOODS.forEach(m => {
-    const count = moodCount[m] || 0;
-    const h = Math.max(count / maxCount * 100, 4);
-    html += `<div style="text-align:center;">
-      <div class="mood-bar-item" style="height:${h}%;${count===0?'opacity:0.3':''}"></div>
-      <div class="mood-bar-label">${m}<br>${count}天</div>
-    </div>`;
-  });
-  html += '</div>';
-  chart.innerHTML = html;
-
   updateStreak();
-  // Delay to ensure DOM is fully painted
   setTimeout(() => renderRpgPanel(loadMeta().activeBranch), 0);
 }
 
@@ -2781,8 +2743,8 @@ function renderPlan(branch) {
   let data = BRANCH_PLAN_DATA[branchKey] || BRANCH_PLAN_DATA.jazz;
   // Put "每日练习安排" at the top, renumber
   data = [...data].sort((a, b) => {
-    if (a.title.includes('每日练习')) return -1;
-    if (b.title.includes('每日练习')) return 1;
+    if (a.title.includes('每日练习') || a.title.includes('每日练琴')) return -1;
+    if (b.title.includes('每日练习') || b.title.includes('每日练琴')) return 1;
     return 0;
   }).map((s, i) => ({
     ...s,
@@ -3155,14 +3117,9 @@ function renderRefTable(branch) {
 // ============================================================
 // SETTLEMENT FUNCTIONS
 // ============================================================
-function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistribution, mood, time) {
+function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time) {
   const overlay = document.getElementById('settlementOverlay');
   if (!overlay) return;
-  // Store for share card
-  lastSettlementData = { xpGainedByBranch, rpgByBranch, dateStr, time, tags, mood };
-  // Hide share screen on new settlement
-  const shareScreen = document.getElementById('settlementShare');
-  if (shareScreen) shareScreen.style.display = 'none';
 
   // Screen 1: Summary — show XP for all 3 branches
   const xpList = document.getElementById('settlementXpList');
@@ -3229,7 +3186,28 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistri
   const levelUpEl = document.getElementById('rpgLevelUp');
   if (levelUpEl) {
     levelUpEl.style.display = hasLevelUp ? 'block' : 'none';
-    if (hasLevelUp) playLevelUpSound();
+  }
+
+  // Show level-up overlay if leveled up
+  if (hasLevelUp) {
+    const levelupDetails = [];
+    for (const branch of BRANCH_KEYS) {
+      const rpg = rpgByBranch[branch];
+      if (!rpg) continue;
+      const xpGained = xpGainedByBranch[branch] || {};
+      for (const dim of DIM_KEYS) {
+        const xp = rpg.scores[dim] || 0;
+        const gained = xpGained[dim] || 0;
+        const level = getLevel(xp, branch);
+        const prevLevel = getLevel(Math.max(0, xp - gained), branch);
+        if (level > prevLevel && level < LEVEL_NAMES.length - 1) {
+          levelupDetails.push(`${BRANCH_EMOJI[branch]} ${DIM_LABELS[dim]} → ${LEVEL_NAMES[level]}`);
+        }
+      }
+    }
+    if (levelupDetails.length > 0) {
+      showLevelUpOverlay(levelupDetails);
+    }
   }
 
   // Road progress (use active branch)
@@ -3248,7 +3226,7 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistri
   // Screen 3: Advice (combined across all branches)
   const adviceEl = document.getElementById('adviceBox');
   if (adviceEl) {
-    adviceEl.innerHTML = generateAdvice(rpgByBranch, tags, mood);
+    adviceEl.innerHTML = generateAdvice(rpgByBranch);
   }
 
   overlay.classList.add('show');
@@ -3257,39 +3235,15 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, tags, timeDistri
   if (modal) modal.scrollTop = 0;
 }
 
-function generateAdvice(rpgByBranch, tags, mood) {
-  const lines = [];
-
-  // Mood response
-  const moodTexts = {
-    ':D': '状态火热！今天手感起飞了，保持这股劲！',
-    ':)': '稳扎稳打，不错的一天。',
-    ':|': '平淡也是练琴的一部分，坚持就是胜利。',
-    'x(': '烦躁日还能坐下来，已经是胜利。',
-    ':(': '能坚持打卡就是勇士，会好起来的。'
-  };
-  if (mood && moodTexts[mood]) lines.push(moodTexts[mood]);
-
-  // Decay warnings only
-  const now = new Date();
-  for (const branch of BRANCH_KEYS) {
-    const rpg = rpgByBranch[branch];
-    if (!rpg) continue;
-    for (const dim of DIM_KEYS) {
-      const lastDate = rpg.lastPractice[dim];
-      if (!lastDate) continue;
-      const daysSince = (now - new Date(lastDate)) / (1000 * 60 * 60 * 24);
-      if (daysSince > 5) {
-        lines.push(`🔻 [${BRANCH_LABELS[branch]}] ${DIM_LABELS[dim]} 正在衰减中！`);
-      }
-    }
-  }
-
-  if (lines.length <= 1) {
-    lines.push('👍 各方面均衡发展，继续保持节奏！');
-  }
-
-  return lines.join('<br>');
+function generateAdvice(rpgByBranch) {
+  const encs = [
+    '练了就是赚到，继续加油 💪',
+    '每一次练习都在积累，别停下',
+    '今天的汗水是明天的即兴',
+    '坚持就是最强的节奏感',
+    '慢慢来，比较快'
+  ];
+  return encs[Math.floor(Math.random() * encs.length)];
 }
 
 function playLevelUpSound() {
@@ -3315,6 +3269,35 @@ function playLevelUpSound() {
 // ============================================================
 // RPG PANEL RENDER
 // ============================================================
+function showLevelUpOverlay(details) {
+  const overlay = document.getElementById('levelupOverlay');
+  const detailEl = document.getElementById('levelupDetail');
+  const particlesEl = document.getElementById('levelupParticles');
+  if (!overlay || !detailEl) return;
+
+  detailEl.innerHTML = details.join('<br>');
+  particlesEl.innerHTML = '';
+
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'levelup-particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = Math.random() * 40 + '%';
+    p.style.animationDelay = Math.random() * 0.5 + 's';
+    p.style.background = ['#ffe040', '#f0b030', '#58b868', '#58a8d8', '#e04848'][Math.floor(Math.random() * 5)];
+    particlesEl.appendChild(p);
+  }
+
+  overlay.classList.add('show');
+  playLevelUpSound();
+
+  const dismiss = () => {
+    overlay.classList.remove('show');
+    overlay.removeEventListener('click', dismiss);
+  };
+  overlay.addEventListener('click', dismiss);
+}
+
 function renderRpgPanel(branch) {
   const branchKey = branch || loadMeta().activeBranch || 'jazz';
   let rpg = loadBranchState(branchKey);
@@ -3606,7 +3589,6 @@ function confirmManualScores() {
 }
 
 function quickStart() {
-  if (!confirm('🌱 从头开始：所有维度初始 50 XP（纯新手）。\n\n⚠️ 如果你有一定基础，建议点"取消"，用上方的 AI 评估或手动设置来匹配你的真实水平。\n\n确定要从头开始吗？')) return;
   const scores = {};
   for (const key of Object.keys(CHAR_DIM_MAP)) {
     scores[CHAR_DIM_MAP[key]] = 50;
@@ -3642,182 +3624,6 @@ function finalizeCharCreation(scores, note) {
   renderRpgPanel();
   updateStreak();
   updateDataSize();
-}
-
-// ============================================================
-// SHARE CARD
-// ============================================================
-let lastSettlementData = null;
-
-function drawShareCard(xpGainedByBranch, rpgByBranch, dateStr, time, tags, mood) {
-  const canvas = document.getElementById('shareCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  // HiDPI
-  const scale = window.devicePixelRatio || 1;
-  const W = 400, H = 500;
-  canvas.width = W * scale; canvas.height = H * scale;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  ctx.scale(scale, scale);
-
-  // Background
-  ctx.fillStyle = '#16213e';
-  ctx.fillRect(0, 0, W, H);
-
-  // Pixel border
-  ctx.strokeStyle = '#f0b030';
-  ctx.lineWidth = 5;
-  ctx.strokeRect(3, 3, W - 6, H - 6);
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(7, 7, W - 14, H - 14);
-
-  // === Simple pixel character (shifted down) ===
-  const cx = 130, cy = 52;
-  // Bass body (warm wood)
-  ctx.fillStyle = '#d4882a';
-  ctx.fillRect(cx - 14, cy + 2, 6, 16);
-  ctx.fillRect(cx - 16, cy + 16, 10, 6);
-  // Bass neck
-  ctx.fillStyle = '#8b6914';
-  ctx.fillRect(cx - 8, cy - 6, 3, 24);
-  // Character head
-  ctx.fillStyle = '#e8c0a0';
-  ctx.fillRect(cx + 2, cy - 8, 10, 10);
-  // Red hair (simple top)
-  ctx.fillStyle = '#e04848';
-  ctx.fillRect(cx, cy - 14, 14, 6);
-  // Blue scarf
-  ctx.fillStyle = '#4090d0';
-  ctx.fillRect(cx - 2, cy + 2, 16, 3);
-  // Body
-  ctx.fillStyle = '#2a2a3e';
-  ctx.fillRect(cx + 2, cy + 4, 10, 14);
-
-  // XP++ above head
-  ctx.fillStyle = '#58b868';
-  ctx.font = 'bold 12px "Press Start 2P", monospace';
-  ctx.fillText('XP++', cx - 10, cy - 22);
-  ctx.fillStyle = '#ffe040';
-  ctx.fillRect(cx - 14, cy - 26, 3, 3);
-  ctx.fillRect(cx + 20, cy - 28, 2, 2);
-
-  // Title
-  ctx.fillStyle = '#f0b030';
-  ctx.font = 'bold 15px "Press Start 2P", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('贝斯练习RPG', W/2 + 30, 56);
-
-  // Date + duration
-  ctx.fillStyle = '#e8e0d0';
-  ctx.font = '10px Silkscreen, monospace';
-  ctx.fillText(dateStr + '  |  ' + (time || '?') + 'min', W/2 + 30, 76);
-
-  // Divider
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.beginPath();
-  ctx.moveTo(30, 96); ctx.lineTo(W - 30, 96);
-  ctx.stroke();
-
-  // Tags + Mood
-  let headerY = 111;
-  if (tags && tags.length > 0) {
-    ctx.fillStyle = '#a09880';
-    ctx.font = '9px Silkscreen, monospace';
-    ctx.fillText(tags.join(' · '), W/2, headerY);
-    headerY += 15;
-  }
-  if (mood) {
-    ctx.fillStyle = '#e8e0d0';
-    ctx.font = '20px monospace';
-    ctx.fillText(mood, W/2, headerY);
-    headerY += 22;
-  }
-
-  // Branch XP bars
-  let y = headerY + 4;
-  const branchOrder = ['jazz', 'pop', 'neon'];
-  for (const branch of branchOrder) {
-    const xpGained = xpGainedByBranch[branch] || {};
-    const total = Object.values(xpGained).reduce((a, b) => a + b, 0);
-    if (total === 0) continue;
-    const rpg = rpgByBranch[branch];
-
-    ctx.fillStyle = '#f0b030';
-    ctx.font = 'bold 10px Silkscreen, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(BRANCH_EMOJI[branch] + ' ' + BRANCH_LABELS[branch] + '  +' + total + ' XP', 35, y);
-    y += 14;
-
-    if (rpg) {
-      for (const dim of ['tech','rhythm','ear','harmony','improv','repertoire']) {
-        if (!xpGained[dim]) continue;
-        const xp = rpg.scores[dim] || 0;
-        const level = getLevel(xp, branch);
-        const lvlName = LEVEL_NAMES[level];
-        const thresh = BRANCH_LEVEL_THRESHOLDS[branch];
-        const nextT = thresh[level + 1] || thresh[thresh.length - 1];
-        const prevT = thresh[level];
-        const pct = nextT === Infinity ? 100 : Math.round((xp - prevT) / (nextT - prevT) * 100);
-        ctx.fillStyle = '#a09880';
-        ctx.font = '8px Silkscreen, monospace';
-        ctx.fillText(DIM_LABELS[dim].slice(0, 4), 40, y + 10);
-        ctx.fillStyle = '#16213e';
-        ctx.fillRect(95, y + 3, 180, 8);
-        ctx.fillStyle = '#58b868';
-        ctx.fillRect(95, y + 3, 180 * pct / 100, 8);
-        ctx.fillStyle = '#f0b030';
-        ctx.fillText('+' + xpGained[dim] + '  ' + lvlName, 282, y + 10);
-        y += 11;
-      }
-    }
-    y += 5;
-  }
-
-  // Divider
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.beginPath();
-  ctx.moveTo(30, y); ctx.lineTo(W - 30, y);
-  ctx.stroke();
-  y += 12;
-
-  // Encouragement based on mood + duration
-  const encouragements = {
-    ':D': ['状态火热！今天吉他之神附体了', '火力全开！手感滚烫的一天'],
-    ':)': ['稳扎稳打，离大师又近一步', '练习在悄悄积累，别停下'],
-    ':|': ['坚持就是胜利，每一步都算数', '平淡的日子才见真功夫'],
-    'x(': ['烦躁也能练下去，这是真正的自律', '今天的挣扎是明天的肌肉记忆'],
-    ':(': ['能坐下来就是勇士，会好起来的', '低谷之后就是上升，信我']
-  };
-  const timeTips = (time || 0) >= 60 ? '今天练得够久，记得休息手指！' : (time || 0) >= 30 ? '刚刚好，不多不少' : '短练也是练，贵在坚持';
-  const encList = encouragements[mood] || encouragements[':|'];
-  const enc = encList[Math.floor(Math.random() * encList.length)];
-
-  ctx.fillStyle = '#e8e0d0';
-  ctx.font = '10px Silkscreen, monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(enc, W/2, y);
-  ctx.fillStyle = '#a09880';
-  ctx.font = '9px Silkscreen, monospace';
-  ctx.fillText(timeTips, W/2, y + 16);
-
-  // Streak
-  const data = loadCheckins();
-  let streak = 0;
-  const dd = new Date();
-  dd.setHours(0, 0, 0, 0);
-  while (true) {
-    const ds = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
-    if (data[ds]) { streak++; dd.setDate(dd.getDate() - 1); }
-    else break;
-  }
-
-  ctx.fillStyle = '#f0b030';
-  ctx.font = 'bold 12px Silkscreen, monospace';
-  ctx.fillText('连续打卡 ' + streak + ' 天', W/2, H - 30);
-  ctx.fillStyle = '#4a4a6a';
-  ctx.font = '8px Silkscreen, monospace';
-  ctx.fillText('贝斯练习RPG · 练琴游戏化', W/2, H - 14);
 }
 
 // ============================================================
@@ -3931,35 +3737,6 @@ function init() {
     });
   }
 
-  // Share card buttons
-  const btnShareCard = document.getElementById('btnShareCard');
-  if (btnShareCard) {
-    btnShareCard.addEventListener('click', () => {
-      if (lastSettlementData) {
-        const d = lastSettlementData;
-        drawShareCard(d.xpGainedByBranch, d.rpgByBranch, d.dateStr, d.time, d.tags, d.mood);
-        document.getElementById('settlementShare').style.display = 'block';
-        document.getElementById('settlementModal').scrollTop = document.getElementById('settlementModal').scrollHeight;
-      }
-    });
-  }
-  const btnDownloadCard = document.getElementById('btnDownloadCard');
-  if (btnDownloadCard) {
-    btnDownloadCard.addEventListener('click', () => {
-      const canvas = document.getElementById('shareCanvas');
-      if (!canvas) return;
-      const link = document.createElement('a');
-      link.download = 'bass-rpg-' + new Date().toISOString().slice(0, 10) + '.png';
-      link.href = canvas.toDataURL();
-      link.click();
-    });
-  }
-  const btnCloseShare = document.getElementById('btnCloseShare');
-  if (btnCloseShare) {
-    btnCloseShare.addEventListener('click', () => {
-      document.getElementById('settlementShare').style.display = 'none';
-    });
-  }
   const settlementOverlay = document.getElementById('settlementOverlay');
   if (settlementOverlay) {
     settlementOverlay.addEventListener('click', (e) => {
@@ -4001,8 +3778,25 @@ function init() {
     if (btnCloseHelp) btnCloseHelp.addEventListener('click', () => helpOverlay.classList.remove('show'));
   }
 
+  // Changelog
+  const btnChangelog = document.getElementById('btnChangelog');
+  const changelogOverlay = document.getElementById('changelogOverlay');
+  if (btnChangelog && changelogOverlay) {
+    btnChangelog.addEventListener('click', () => changelogOverlay.classList.add('show'));
+    changelogOverlay.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) changelogOverlay.classList.remove('show');
+    });
+    const btnCloseChangelog = document.getElementById('btnCloseChangelog');
+    const btnCloseChangelog2 = document.getElementById('btnCloseChangelog2');
+    if (btnCloseChangelog) btnCloseChangelog.addEventListener('click', () => changelogOverlay.classList.remove('show'));
+    if (btnCloseChangelog2) btnCloseChangelog2.addEventListener('click', () => changelogOverlay.classList.remove('show'));
+  }
+
   const btnReEvaluate = document.getElementById('btnReEvaluate');
   if (btnReEvaluate) btnReEvaluate.addEventListener('click', reEvaluate);
+
+  const btnCloseCharCreation = document.getElementById('btnCloseCharCreation');
+  if (btnCloseCharCreation) btnCloseCharCreation.addEventListener('click', hideCharCreation);
 
   // Branch tabs on stats page
   document.querySelectorAll('#branchTabs .char-tab').forEach(tab => {
