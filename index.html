@@ -1624,7 +1624,7 @@ function loadCheckins() {
 }
 
 function saveCheckins(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) { console.warn('saveCheckins failed:', e); }
 }
 
 function getCheckin(dateStr) {
@@ -1668,7 +1668,7 @@ const BRANCH_LEVEL_THRESHOLDS = {
 const LEVEL_NAMES = [
   '初级I','初级II','初级III',
   '中级I','中级II','中级III',
-  '高级I','高级II','高级III'
+  '高级I','高级II','高级III','MAX'
 ];
 
 
@@ -1698,7 +1698,7 @@ function loadBranchState(branch) {
 }
 
 function saveBranchState(branch, state) {
-  localStorage.setItem(storageKey(branch), JSON.stringify(state));
+  try { localStorage.setItem(storageKey(branch), JSON.stringify(state)); } catch(e) { console.warn('saveBranchState failed:', e); }
 }
 
 function loadMeta() {
@@ -1713,12 +1713,8 @@ function loadMeta() {
 }
 
 function saveMeta(meta) {
-  localStorage.setItem(STORAGE_RPG_META, JSON.stringify(meta));
+  try { localStorage.setItem(STORAGE_RPG_META, JSON.stringify(meta)); } catch(e) { console.warn('saveMeta failed:', e); }
 }
-
-// Legacy wrappers (for migration / backward compat)
-function loadRpgState() { return loadBranchState('jazz'); }
-function saveRpgState(state) { saveBranchState('jazz', state); }
 
 // --- Branch-aware helpers ---
 function getLevel(xp, branch) {
@@ -1833,7 +1829,8 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(currentYear, currentMonth - 1, 0).getDate();
 
   const data = loadCheckins();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
   // Previous month fill
   for (let i = firstDay - 1; i >= 0; i--) {
@@ -1866,7 +1863,6 @@ function renderCalendar() {
   // Today banner
   const banner = document.getElementById('todayBanner');
   if (banner) {
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const todayChecked = !!data[todayStr];
     banner.style.display = todayChecked ? 'none' : 'block';
     banner.onclick = () => openModal(todayStr);
@@ -1920,8 +1916,6 @@ function showDayDetail() {
   detail.classList.add('show');
   document.getElementById('detailDate').textContent = selectedDate;
   document.getElementById('detailTime').textContent = `⏱️ 练琴 ${c.time} 分钟`;
-  const detailContent = document.getElementById('detailContent');
-  if (detailContent) detailContent.textContent = '';
 }
 
 // ============================================================
@@ -2059,7 +2053,8 @@ addBtn.className = 'btn btn-primary';
 addBtn.textContent = '+ 新增打卡';
 addBtn.style.marginTop = '14px';
 addBtn.addEventListener('click', () => {
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const d = new Date();
+  const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   openModal(todayStr);
 });
 document.getElementById('page-calendar').querySelector('h2').after(addBtn);
@@ -2163,8 +2158,8 @@ const ACHIEVEMENTS = [
   { id:'all5', icon:'🌟', name:'三栖进阶', desc:'三个分支都有入门者III', cat:'branch', check:()=>hasBranchLevel('jazz',5)&&hasBranchLevel('pop',5)&&hasBranchLevel('neon',5) },
   { id:'all7', icon:'💫', name:'三栖达人', desc:'三个分支都有达人I', cat:'branch', check:()=>hasBranchLevel('jazz',7)&&hasBranchLevel('pop',7)&&hasBranchLevel('neon',7) },
   // 练习模式 (6)
-  { id:'night', icon:'🌙', name:'夜猫子', desc:'在凌晨0-5点打卡', cat:'pattern', check:d=>hasTimePattern(d,0,5) },
-  { id:'early', icon:'🌅', name:'早起鸟', desc:'在早上5-7点打卡', cat:'pattern', check:d=>hasTimePattern(d,5,7) },
+  { id:'monday', icon:'📅', name:'周一战士', desc:'在周一打卡', cat:'pattern', check:d=>hasWeekday(d,1) },
+  { id:'friday', icon:'🎊', name:'周五狂欢', desc:'在周五打卡', cat:'pattern', check:d=>hasWeekday(d,5) },
   { id:'long2', icon:'⏳', name:'两小时马拉松', desc:'单次练琴超过120分钟', cat:'pattern', check:d=>hasLongSession(d,120) },
   { id:'long3', icon:'🏋️', name:'三小时铁人', desc:'单次练琴超过180分钟', cat:'pattern', check:d=>hasLongSession(d,180) },
   { id:'weekend', icon:'🎉', name:'周末战士', desc:'在周六或周日打卡', cat:'pattern', check:d=>hasWeekend(d) },
@@ -2198,7 +2193,7 @@ function loadAchievements() {
 }
 
 function saveAchievements(data) {
-  localStorage.setItem(STORAGE_ACHIEVEMENTS, JSON.stringify(data));
+  try { localStorage.setItem(STORAGE_ACHIEVEMENTS, JSON.stringify(data)); } catch(e) { console.warn('saveAchievements failed:', e); }
 }
 
 function checkAndUnlockAchievements() {
@@ -2261,14 +2256,6 @@ function hasMinLevel(minLevel) {
   return false;
 }
 
-function hasDimLevel(dim, minLevel) {
-  for (const branch of BRANCH_KEYS) {
-    const rpg = loadBranchState(branch);
-    if (rpg && getLevel(rpg.scores[dim] || 0, branch) >= minLevel) return true;
-  }
-  return false;
-}
-
 function hasBranchLevel(branch, minLevel) {
   const rpg = loadBranchState(branch);
   if (!rpg) return false;
@@ -2294,11 +2281,8 @@ function hasBranchXP(minXP) {
   return false;
 }
 
-function hasTimePattern(data, startH, endH) {
-  return Object.keys(data).some(d => {
-    const h = new Date(d).getHours();
-    return h >= startH && h < endH;
-  });
+function hasWeekday(data, day) {
+  return Object.keys(data).some(d => new Date(d).getDay() === day);
 }
 
 function hasLongSession(data, minMin) { return Object.values(data).some(c => (c.time || 0) >= minMin); }
@@ -2812,11 +2796,12 @@ function metroTick() {
 
 function startMetronome() {
   if (metroState.running) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) { alert('你的浏览器不支持音频播放'); return; }
   // iOS: destroy old context, create fresh one inside user gesture
   if (metroState.audioCtx) {
     try { metroState.audioCtx.close(); } catch(e) {}
   }
-  const AC = window.AudioContext || window.webkitAudioContext;
   metroState.audioCtx = new AC();
   // Immediately play a short buffer to unlock iOS audio system
   const buf = metroState.audioCtx.createBuffer(1, 1, 22050);
@@ -3145,7 +3130,7 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time) {
         const levelName = LEVEL_NAMES[level];
         const nextThresh = thresholds[level + 1] || thresholds[thresholds.length - 1];
         const prevThresh = thresholds[level];
-        const pct = nextThresh === Infinity ? 100 : Math.min(100, Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100));
+        const pct = (nextThresh === Infinity || nextThresh === prevThresh) ? 100 : Math.min(100, Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100));
         if (level > prevLevel && level < LEVEL_NAMES.length - 1) hasLevelUp = true;
         return `<div class="settlement-bar-row">
           <span class="bar-label">${DIM_EMOJI[key]} ${DIM_LABELS[key].slice(0, 4)}</span>
@@ -3238,6 +3223,7 @@ function playLevelUpSound() {
       osc.start(t);
       osc.stop(t + 0.1);
     });
+    setTimeout(() => ctx.close(), 600);
   } catch(e) { /* silent fail */ }
 }
 
@@ -3297,7 +3283,7 @@ function renderRpgPanel(branch) {
     const levelName = LEVEL_NAMES[level];
     const nextThresh = thresholds[level + 1] || thresholds[thresholds.length - 1];
     const prevThresh = thresholds[level];
-    const pct = nextThresh === Infinity ? 100 : Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100);
+    const pct = (nextThresh === Infinity || nextThresh === prevThresh) ? 100 : Math.round((xp - prevThresh) / (nextThresh - prevThresh) * 100);
     const toNext = getXpToNext(xp, branchKey);
 
     return `<div class="rpg-bar-row">
@@ -3370,10 +3356,15 @@ const CHAR_DIM_EMOJI = {
 // ============================================================
 // DATA EXPORT / IMPORT
 // ============================================================
+const ALL_STORAGE_KEYS = [
+  'bass_rpg_initialized', STORAGE_KEY, STORAGE_RPG_META,
+  ...BRANCH_KEYS.map(b => STORAGE_RPG_PREFIX + b),
+  STORAGE_ACHIEVEMENTS
+];
+
 function calcDataSize() {
   let bytes = 0;
-  const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
-  for (const key of keys) {
+  for (const key of ALL_STORAGE_KEYS) {
     const val = localStorage.getItem(key);
     if (val !== null) bytes += new Blob([val]).size;
   }
@@ -3390,8 +3381,7 @@ function updateDataSize() {
 
 function exportAllData() {
   const exportObj = {};
-  const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
-  for (const key of keys) {
+  for (const key of ALL_STORAGE_KEYS) {
     const val = localStorage.getItem(key);
     if (val !== null) exportObj[key] = val;
   }
@@ -3410,12 +3400,12 @@ function exportAllData() {
 
 function importAllData(file) {
   const reader = new FileReader();
+  reader.onerror = () => alert('❌ 文件读取失败');
   reader.onload = function(e) {
     try {
       const imported = JSON.parse(e.target.result);
-      const keys = ['bass_rpg_initialized', STORAGE_RPG, STORAGE_KEY];
       let restored = 0;
-      for (const key of keys) {
+      for (const key of ALL_STORAGE_KEYS) {
         if (imported[key] !== undefined) {
           localStorage.setItem(key, imported[key]);
           restored++;
@@ -3638,14 +3628,15 @@ function init() {
   const btnQuickStart = document.getElementById('btnQuickStart');
   if (btnQuickStart) btnQuickStart.addEventListener('click', quickStart);
 
-  // Tab switching
-  document.querySelectorAll('.char-tab').forEach(tab => {
+  // Tab switching (only for character creation)
+  document.querySelectorAll('#charCreationOverlay .char-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.char-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.char-tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('#charCreationOverlay .char-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#charCreationOverlay .char-tab-content').forEach(c => c.classList.remove('active'));
       tab.classList.add('active');
       const targetId = 'charTab' + (tab.dataset.tab === 'ai' ? 'AI' : 'Manual');
-      document.getElementById(targetId).classList.add('active');
+      const target = document.getElementById(targetId);
+      if (target) target.classList.add('active');
     });
   });
 
