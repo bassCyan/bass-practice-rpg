@@ -93,6 +93,19 @@
   }
   .streak-num { font-size: 2em; font-weight: 800; color: var(--accent); }
   .streak-label { font-size: 0.8em; color: var(--text2); margin-top: 2px; }
+  .streak-mobile { display: none; }
+
+  .stats-banner {
+    background: rgba(240,176,48,0.1);
+    border: 2px solid rgba(240,176,48,0.3);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-family: var(--font-ui);
+    font-size: 0.75em;
+    text-align: center;
+    cursor: pointer;
+  }
 
   .data-io-btns {
     display: flex;
@@ -443,7 +456,28 @@
     .logo { font-size: 0.65em; padding: 0 8px 10px 12px; white-space: nowrap; flex-shrink: 0; }
     .nav-item { padding: 8px 10px; border-left: none; border-bottom: 2px solid transparent; font-size: 0.8em; white-space: nowrap; flex-shrink: 0; }
     .nav-item.active { border-left: none; border-bottom-color: var(--accent); }
-    .streak-box { display: none; }
+    .streak-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: auto 6px auto 0;
+      padding: 0;
+      background: none;
+      border-radius: 0;
+      text-align: left;
+    }
+    .streak-num, .streak-label, .data-io-btns, .data-size, .streak-box > .btn { display: none; }
+    .streak-mobile {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-ui);
+      font-size: 0.75em;
+      color: var(--accent);
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
     .main { padding: 16px; max-height: none; }
     .cal-day { font-size: 0.8em; min-width: auto; }
     .settlement-modal { max-width: 94vw; padding: 14px 10px; }
@@ -1253,6 +1287,7 @@
   <div class="streak-box">
     <div class="streak-num" id="streakCount">0</div>
     <div class="streak-label">🔥 连续打卡天数</div>
+    <div class="streak-mobile" id="streakMobile">🔥 <span id="streakMobileNum">0</span></div>
     <div class="data-io-btns">
       <button class="btn btn-ghost btn-sm btn-data-io" id="btnExport">📤 导出</button>
       <button class="btn btn-ghost btn-sm btn-data-io" id="btnImport">📥 导入</button>
@@ -1269,6 +1304,7 @@
   <!-- STATS PAGE -->
   <div class="page active" id="page-stats">
     <h2>📊 练琴统计</h2>
+    <div id="statsBanner" class="stats-banner" style="display:none;"></div>
     <div class="char-tabs" id="branchTabs" style="margin-bottom:16px;">
       <button class="char-tab active" data-branch="jazz">🎺 爵士贝斯手</button>
       <button class="char-tab" data-branch="pop">🎸 流行贝斯手</button>
@@ -2035,6 +2071,9 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const hasXP = Object.values(xpGainedByBranch).some(g => Object.keys(g).length > 0);
   if (hasXP) {
     showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time);
+  } else {
+    // No settlement — show achievements immediately
+    if (pendingAchievements) { showAchievementPopup(pendingAchievements); pendingAchievements = null; }
   }
 });
 
@@ -2073,38 +2112,27 @@ function updateStreak() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
 
-  while (true) {
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (data[ds]) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-    } else {
-      break;
+  // Count streak from today backwards; if today not checked in, start from yesterday
+  for (let offset = 0; offset <= 1; offset++) {
+    const temp = new Date(d);
+    temp.setDate(temp.getDate() - offset);
+    while (true) {
+      const ds = `${temp.getFullYear()}-${String(temp.getMonth()+1).padStart(2,'0')}-${String(temp.getDate()).padStart(2,'0')}`;
+      if (data[ds]) {
+        streak++;
+        temp.setDate(temp.getDate() - 1);
+      } else {
+        break;
+      }
     }
+    if (streak > 0) break;
   }
 
   document.getElementById('streakCount').textContent = streak;
+  const mobileNum = document.getElementById('streakMobileNum');
+  if (mobileNum) mobileNum.textContent = streak;
 
-  // Best streak
-  let bestStreak = 0;
-  let currentStreak = 0;
-  const allDates = Object.keys(data).sort();
-  for (let i = 0; i < allDates.length; i++) {
-    if (i === 0) {
-      currentStreak = 1;
-    } else {
-      const prev = new Date(allDates[i-1]);
-      const curr = new Date(allDates[i]);
-      const diff = (curr - prev) / (1000 * 60 * 60 * 24);
-      if (Math.abs(diff - 1) < 0.1) {
-        currentStreak++;
-      } else {
-        currentStreak = 1;
-      }
-    }
-    if (currentStreak > bestStreak) bestStreak = currentStreak;
-  }
-  document.getElementById('statBestStreak').textContent = bestStreak;
+  document.getElementById('statBestStreak').textContent = getMaxStreak(data);
 }
 
 // ============================================================
@@ -2215,7 +2243,7 @@ function checkAndUnlockAchievements() {
   });
   if (changed) {
     saveAchievements(unlocked);
-    if (newlyUnlocked.length > 0) showAchievementPopup(newlyUnlocked);
+    if (newlyUnlocked.length > 0) pendingAchievements = newlyUnlocked;
   }
   return unlocked;
 }
@@ -2241,7 +2269,7 @@ function getMaxStreak(data) {
       const prev = new Date(dates[i - 1]);
       const curr = new Date(dates[i]);
       const diff = (curr - prev) / (1000 * 60 * 60 * 24);
-      current = diff === 1 ? current + 1 : 1;
+      current = Math.abs(diff - 1) < 0.1 ? current + 1 : 1;
     }
     max = Math.max(max, current);
   }
@@ -2394,6 +2422,7 @@ function renderAchievements(data) {
 // ============================================================
 let lastSettlementData = null;
 let shareCardBranch = 'jazz';
+let pendingAchievements = null;
 
 function generateShareCard(dateStr, xpGainedByBranch, rpgByBranch, time, branch) {
   const W = 1080, H = 1920;
@@ -2722,6 +2751,25 @@ function renderStats() {
 
   updateStreak();
   setTimeout(() => renderRpgPanel(loadMeta().activeBranch), 0);
+
+  // Stats banner: quick check-in entry
+  const banner = document.getElementById('statsBanner');
+  if (banner) {
+    const today = new Date();
+    const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const todayChecked = !!data[ds];
+    if (todayChecked) {
+      banner.style.display = 'block';
+      banner.textContent = `✅ 今天已打卡，练了 ${data[ds].time} 分钟`;
+      banner.style.cursor = 'default';
+      banner.onclick = null;
+    } else {
+      banner.style.display = 'block';
+      banner.textContent = '🎸 今天还没打卡哦，点这里开始';
+      banner.style.cursor = '';
+      banner.onclick = () => openModal(ds);
+    }
+  }
 }
 
 // ============================================================
@@ -3215,14 +3263,63 @@ function showSettlement(dateStr, xpGainedByBranch, rpgByBranch, time) {
 }
 
 function generateAdvice(rpgByBranch) {
-  const encs = [
-    '练了就是赚到，继续加油 💪',
-    '每一次练习都在积累，别停下',
-    '今天的汗水是明天的即兴',
-    '坚持就是最强的节奏感',
-    '慢慢来，比较快'
+  const pool = [
+    '练了就是赚到！今天也是棒棒的贝斯手 (ﾉ◕ヮ◕)ﾉ*:・ﾟ✧',
+    '每一次练习都在积累，不知不觉就会变强的～',
+    '慢慢来，比较快。节奏感是急不来的 ヽ(・×・´)ノ',
+    '练完记得喝水休息哦，身体也是乐器的一部分 ♪',
+    '今天的你比昨天多了一点经验值，这就是进步 (ง •̀_•́)ง',
+    '能坐下来练琴本身就很厉害了，给自己鼓个掌 👏',
+    '贝斯手都是这样一点一点变成 groove 怪物的 (｀・ω・´)',
+    '练琴的时候有没有进入心流呀？那种感觉超棒的～',
+    '休息也很重要哦，大脑需要时间消化今天练的东西 zZZ',
+    '不开心的时候可以随便弹点什么，音乐是最好的陪伴 (｡♥‿♥｡)',
+    '今天的练习是给未来自己的一份礼物～',
+    '贝斯线就是音乐的骨架，你正在变得越来越稳 (ノ°▽°)ノ',
+    '有没有发现弹着弹着就忘了时间？那就对了！',
+    '练琴就像存钱，每天一点点，回头看超有成就感 ✨',
+    '技术会慢慢来的，享受过程最重要啦 (◠‿◠)',
+    '今天的汗水是明天的即兴，但不流汗也没关系哦～',
+    '坚持是最强的节奏感，而你正在做的就是坚持 (´▽`ʃ♡ƪ)',
+    '弹贝斯的人运气都不会太差的，真的 (ノ´ヮ`)ノ',
+    '有时候不想练也很正常，重要的是你今天来了 (っ´ω`)っ',
+    '音乐不是比赛，按自己的节奏来就好啦～',
+    '你的贝斯今天被弹了，它一定很开心 (ƞ_ƞ)',
+    '练完奖励自己一杯好喝的吧，你值得！🧋',
+    '每一分钟的练习都会留在你的手指记忆里 (•̀ᴗ•́)و',
+    '练琴是和自己对话的时间，好好享受这段独处 ♡',
+    '今天练了什么新东西吗？好奇心是最好的老师～',
   ];
-  return encs[Math.floor(Math.random() * encs.length)];
+
+  // Dimension-specific tips
+  const dimTips = {
+    tech:   '技术基本功今天练了！建议偶尔录下来听听，会有新发现哦 (•‿•)',
+    rhythm: '节奏感在进步！试着跟着喜欢的歌打拍子，会更稳的 (ノ´ω`)ノ',
+    ear:   '听力练习了不起！能听出来的东西会越来越多的 (´・ω・`)',
+    harmony:'和声/乐理虽然看起来枯燥，但它是即兴的钥匙哦 ♪',
+    improv: '即兴能力在成长！弹错也没关系，说不定那是新的灵感 (◕ᴗ◕✿)',
+    repertoire:'曲库在扩大！会的歌越多，上台越不慌 (ง •̀_•́)ง',
+  };
+
+  let advice = pool[Math.floor(Math.random() * pool.length)];
+
+  // If practiced specific dimensions, 50% chance to add a dimension tip
+  if (rpgByBranch) {
+    try {
+      const activeBranch = loadMeta().activeBranch || 'jazz';
+      const branch = rpgByBranch[activeBranch];
+      if (branch && branch.history && branch.history.length > 0) {
+        const last = branch.history[branch.history.length - 1];
+        const focus = last.focusOrder || [];
+        if (focus.length > 0 && focus.length < DIM_KEYS.length && Math.random() < 0.5) {
+          const dim = focus[Math.floor(Math.random() * focus.length)];
+          if (dimTips[dim]) advice += '\n\n' + dimTips[dim];
+        }
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  return advice;
 }
 
 function playLevelUpSound() {
@@ -3565,7 +3662,6 @@ function importJsonScore() {
   renderCalendar();
   renderStats();
   renderRpgPanel();
-  updateStreak();
   updateDataSize();
 }
 
@@ -3612,7 +3708,6 @@ function finalizeCharCreation(scores, note) {
   renderCalendar();
   renderStats();
   renderRpgPanel();
-  updateStreak();
   updateDataSize();
 }
 
@@ -3710,28 +3805,36 @@ function init() {
     metroState.visualOn = e.target.checked;
   });
 
-  // 键盘空格控制节拍器
+  // 键盘控制
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && e.target === document.body) {
       e.preventDefault();
       if (metroState.running) stopMetronome();
       else startMetronome();
     }
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('settlementOverlay');
+      if (overlay && overlay.classList.contains('show')) {
+        e.preventDefault();
+        closeSettlement();
+      }
+    }
   });
 
   // --- Settlement ---
-  const btnCloseSettlement = document.getElementById('btnCloseSettlement');
-  if (btnCloseSettlement) {
-    btnCloseSettlement.addEventListener('click', () => {
-      document.getElementById('settlementOverlay').classList.remove('show');
-      document.body.style.overflow = '';
-    });
+  function closeSettlement() {
+    document.getElementById('settlementOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+    if (pendingAchievements) { showAchievementPopup(pendingAchievements); pendingAchievements = null; }
   }
+
+  const btnCloseSettlement = document.getElementById('btnCloseSettlement');
+  if (btnCloseSettlement) btnCloseSettlement.addEventListener('click', closeSettlement);
 
   const settlementOverlay = document.getElementById('settlementOverlay');
   if (settlementOverlay) {
     settlementOverlay.addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) { settlementOverlay.classList.remove('show'); document.body.style.overflow = ''; }
+      if (e.target === e.currentTarget) closeSettlement();
     });
   }
 
@@ -3892,7 +3995,6 @@ function init() {
   } else {
     renderStats();
     renderCalendar();
-    updateStreak();
     updateDataSize();
   }
 }
